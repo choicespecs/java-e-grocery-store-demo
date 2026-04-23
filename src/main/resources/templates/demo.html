@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Chaos Panel – Fresh Groceries</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <style>
+        .saga-step { border-left: 4px solid #198754; padding-left: 1rem; margin-bottom: 1rem; }
+        .saga-step.danger  { border-color: #dc3545; }
+        .saga-step.warning { border-color: #ffc107; }
+        code { font-size: 0.85em; }
+        .s-ok   { color: #198754; font-weight: 600; }
+        .s-fail { color: #dc3545; font-weight: 600; }
+        .s-comp { color: #856404; font-weight: 600; }
+        .s-skip { color: #6c757d; }
+        .s-deg  { color: #0dcaf0; font-weight: 600; }
+        .s-slow { color: #0d6efd; font-weight: 600; }
+        .scenario-table td { vertical-align: middle; }
+        .scenario-table .section-row td { background: #343a40; color: #fff; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark px-4 mb-4">
+    <a class="navbar-brand fw-bold" href="/">🛒 Fresh Groceries</a>
+    <div class="d-flex gap-2">
+        <a href="/cart" class="btn btn-outline-light btn-sm">
+            Cart <span class="badge bg-warning text-dark" th:text="${cartItemCount}">0</span>
+        </a>
+        <a href="/demo" class="btn btn-warning btn-sm fw-bold">⚡ Chaos Panel</a>
+    </div>
+</nav>
+
+<div class="container-xl" style="max-width:1200px">
+
+    <div class="d-flex align-items-center gap-3 mb-3">
+        <h2 class="mb-0">⚡ Chaos Engineering Panel</h2>
+        <span th:if="${config.allNormal}" class="badge bg-success fs-6">All Systems Normal</span>
+        <span th:unless="${config.allNormal}" class="badge bg-danger fs-6">Faults Active</span>
+    </div>
+    <p class="text-muted mb-4">
+        Inject failures into individual external services and watch the checkout saga respond in real time —
+        compensations, rollbacks, graceful degradation, and idempotency all in one place.
+    </p>
+
+    <!-- Flash message -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+    <!-- Active fault banner -->
+    <div th:unless="${config.allNormal}" class="alert alert-warning mb-4">
+        <strong>Active faults:</strong>
+        <span th:if="${config.inventoryCheckMode.name() != 'NORMAL'}">
+            Inventory/check = <strong th:text="${config.inventoryCheckMode}"></strong> &nbsp;
+        </span>
+        <span th:if="${config.inventoryReserveMode.name() != 'NORMAL'}">
+            Inventory/reserve = <strong th:text="${config.inventoryReserveMode}"></strong> &nbsp;
+        </span>
+        <span th:if="${config.inventoryCommitMode.name() != 'NORMAL'}">
+            Inventory/commit = <strong th:text="${config.inventoryCommitMode}"></strong> &nbsp;
+        </span>
+        <span th:if="${config.paymentMode.name() != 'NORMAL'}">
+            Payment = <strong th:text="${config.paymentMode}"></strong> &nbsp;
+        </span>
+        <span th:if="${config.promotionMode.name() != 'NORMAL'}">
+            Promotion = <strong th:text="${config.promotionMode}"></strong> &nbsp;
+        </span>
+        <span th:unless="${config.paymentIdempotencyEnabled}">
+            Payment idempotency = <strong>OFF</strong> &nbsp;
+        </span>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ═══════════════════════════════════════════════════════════ LEFT PANEL -->
+        <div class="col-lg-4">
+
+            <!-- Run live test -->
+            <div class="card shadow-sm mb-4 border-primary">
+                <div class="card-header fw-bold bg-primary text-white">▶ Run Live Test</div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        Fires a checkout against the active fault config using card
+                        <code>4111 1111 1111 1111</code> and your current cart.
+                        <a href="/">Add items</a> to your cart first.
+                    </p>
+                    <form th:action="@{/demo/run}" method="post">
+                        <button class="btn btn-primary w-100" type="submit">▶ Run Test Checkout</button>
+                    </form>
+
+                    <div th:if="${testError}" class="alert alert-warning mt-3 small mb-0" th:text="${testError}"></div>
+
+                    <div th:if="${testTrace != null}" class="mt-3">
+                        <div th:class="${testSucceeded} ? 'alert alert-success py-2 small mb-2' : 'alert alert-danger py-2 small mb-2'"
+                             th:text="${testOutcome}"></div>
+                        <ul class="list-group list-group-flush small font-monospace">
+                            <li th:each="step : ${testTrace}"
+                                class="list-group-item py-1 px-2 d-flex align-items-start gap-2">
+                                <span class="fw-bold"
+                                      th:classappend="${step.status.name() == 'OK'} ? 'text-success' :
+                                                      (${step.status.name() == 'FAILED'} ? 'text-danger' :
+                                                      (${step.status.name() == 'COMPENSATED'} ? 'text-warning' :
+                                                      (${step.status.name() == 'DEGRADED'} ? 'text-info' : 'text-muted')))"
+                                      th:text="${step.number}">1</span>
+                                <span>
+                                    <span th:classappend="${step.status.name() == 'OK'} ? 'text-success' :
+                                                          (${step.status.name() == 'FAILED'} ? 'text-danger' :
+                                                          (${step.status.name() == 'COMPENSATED'} ? 'text-warning fw-semibold' :
+                                                          (${step.status.name() == 'DEGRADED'} ? 'text-info' : 'text-muted')))"
+                                          th:text="${step.operation}">step</span>
+                                    <span th:if="${step.detail != null}" class="text-muted ms-1"
+                                          th:text="'— ' + ${step.detail}"></span>
+                                    <span class="ms-1 badge"
+                                          th:classappend="${step.status.name() == 'OK'} ? 'bg-success' :
+                                                          (${step.status.name() == 'FAILED'} ? 'bg-danger' :
+                                                          (${step.status.name() == 'COMPENSATED'} ? 'bg-warning text-dark' :
+                                                          (${step.status.name() == 'DEGRADED'} ? 'bg-info text-dark' : 'bg-secondary')))"
+                                          th:text="${step.status.name()}">OK</span>
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick scenario presets -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold bg-dark text-white">Quick Scenarios</div>
+                <div class="card-body d-grid gap-2">
+
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="all-normal"/>
+                        <button class="btn btn-outline-success w-100 text-start">
+                            ✅ Reset — all services normal
+                        </button>
+                    </form>
+
+                    <hr class="my-1"/>
+                    <small class="text-muted fw-semibold">💳 PAYMENT SERVICE</small>
+
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="payment-down"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Payment <strong>DOWN</strong> — inventory rollback fires
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="payment-slow"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Payment <strong>SLOW</strong> — 2s delay, still under timeout
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="payment-timeout"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Payment <strong>TIMEOUT</strong> — 5s delay &gt; 3s limit, rollback
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="payment-flaky"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Payment <strong>FLAKY</strong> — every other attempt fails
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="payment-no-idempotency"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Idempotency <strong>OFF</strong> — resubmit = double charge
+                        </button>
+                    </form>
+
+                    <hr class="my-1"/>
+                    <small class="text-muted fw-semibold">📦 INVENTORY SERVICE</small>
+
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-check-down"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Inventory <strong>DOWN</strong> at availability check (Step 1)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-reserve-down"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Inventory <strong>DOWN</strong> at stock reserve (Step 3)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-reserve-slow"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Inventory <strong>SLOW</strong> at reserve — no timeout, thread blocks
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-commit-down"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Inventory <strong>DOWN</strong> at commit — full rollback (Step 6)
+                        </button>
+                    </form>
+
+                    <hr class="my-1"/>
+                    <small class="text-muted fw-semibold">🏷 PROMOTION SERVICE</small>
+
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="promotion-down-graceful"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Promotion <strong>DOWN</strong> + graceful degrade (continues)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="promotion-down-hard"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Promotion <strong>DOWN</strong> + hard fail (aborts checkout)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="promotion-flaky"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Promotion <strong>FLAKY</strong> + graceful degrade (safe — read-only)
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- Manual configuration form -->
+            <div class="card shadow-sm">
+                <div class="card-header fw-bold">Manual Configuration</div>
+                <div class="card-body">
+                    <form th:action="@{/demo}" method="post">
+
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">Slow delay (ms)</label>
+                            <input type="number" name="slowDelayMs" class="form-control"
+                                   th:value="${config.slowDelayMs}" min="500" max="30000" step="500"/>
+                            <div class="form-text">How long any SLOW mode sleeps before responding.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Payment timeout (ms)</label>
+                            <input type="number" name="paymentTimeoutMs" class="form-control"
+                                   th:value="${config.paymentTimeoutMs}" min="500" max="30000" step="500"/>
+                            <div class="form-text">
+                                Only payment has a timeout. Set slowDelay &gt; paymentTimeout to trigger a live rollback.
+                            </div>
+                        </div>
+
+                        <p class="fw-semibold mb-1">Inventory service</p>
+                        <div class="mb-2">
+                            <label class="form-label small text-muted">checkAvailability (Step 1)</label>
+                            <select name="inventoryCheckMode" class="form-select form-select-sm">
+                                <option th:each="m : ${modes}" th:value="${m}" th:text="${m}"
+                                        th:selected="${m == config.inventoryCheckMode}"></option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small text-muted">reserveStock (Step 3)</label>
+                            <select name="inventoryReserveMode" class="form-select form-select-sm">
+                                <option th:each="m : ${modes}" th:value="${m}" th:text="${m}"
+                                        th:selected="${m == config.inventoryReserveMode}"></option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">commitReservation (Step 6)</label>
+                            <select name="inventoryCommitMode" class="form-select form-select-sm">
+                                <option th:each="m : ${modes}" th:value="${m}" th:text="${m}"
+                                        th:selected="${m == config.inventoryCommitMode}"></option>
+                            </select>
+                        </div>
+
+                        <p class="fw-semibold mb-1">Payment service</p>
+                        <div class="mb-2">
+                            <select name="paymentMode" class="form-select form-select-sm">
+                                <option th:each="m : ${modes}" th:value="${m}" th:text="${m}"
+                                        th:selected="${m == config.paymentMode}"></option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="paymentIdempotencyEnabled"
+                                   id="idempotencyCheck" value="true"
+                                   th:checked="${config.paymentIdempotencyEnabled}"/>
+                            <label class="form-check-label" for="idempotencyCheck">
+                                Idempotency enabled (deduplicates retries)
+                            </label>
+                        </div>
+
+                        <p class="fw-semibold mb-1">Promotion service</p>
+                        <div class="mb-2">
+                            <select name="promotionMode" class="form-select form-select-sm">
+                                <option th:each="m : ${modes}" th:value="${m}" th:text="${m}"
+                                        th:selected="${m == config.promotionMode}"></option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="promotionGracefulDegradation"
+                                   id="gracefulCheck" value="true"
+                                   th:checked="${config.promotionGracefulDegradation}"/>
+                            <label class="form-check-label" for="gracefulCheck">
+                                Graceful degradation (skip discount, continue)
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Apply</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ RIGHT PANEL -->
+        <div class="col-lg-8">
+
+            <!-- ── Saga flow diagram ───────────────────────────────── -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold">The Checkout Saga — 6 Steps</div>
+                <div class="card-body small">
+
+                    <div class="saga-step">
+                        <strong>Step 1 — <code>checkAvailability</code></strong>
+                        <span class="badge bg-secondary ms-1">Inventory</span>
+                        <span class="badge bg-light text-dark border ms-1">read-only</span><br/>
+                        Pre-flight check — no stock is held yet, nothing is charged.
+                        If DOWN → <span class="text-danger fw-semibold">immediate fail, zero side effects.</span>
+                        Safe to retry.
+                    </div>
+
+                    <div class="saga-step warning">
+                        <strong>Step 2 — <code>applyPromotion</code></strong>
+                        <span class="badge bg-secondary ms-1">Promotion</span>
+                        <span class="badge bg-light text-dark border ms-1">read-only</span>
+                        <span class="badge bg-warning text-dark ms-1">non-critical</span><br/>
+                        Validates a promo code and calculates a discount. Skipped if no code entered.<br/>
+                        <span class="text-info fw-semibold">Graceful degrade ON:</span>
+                        if DOWN → step logged as DEGRADED, checkout continues at full price.<br/>
+                        <span class="text-danger fw-semibold">Graceful degrade OFF:</span>
+                        if DOWN → checkout aborts, no side effects.
+                    </div>
+
+                    <div class="saga-step danger">
+                        <strong>Step 3 — <code>reserveStock</code></strong>
+                        <span class="badge bg-secondary ms-1">Inventory</span>
+                        <span class="badge bg-danger ms-1">side effect</span><br/>
+                        Stock is now held for this order. Other sessions cannot buy these units.
+                        If DOWN → <span class="text-danger fw-semibold">fail before payment — no compensation needed.</span>
+                    </div>
+
+                    <div class="saga-step danger">
+                        <strong>Step 4 — <code>processPayment</code></strong>
+                        <span class="badge bg-secondary ms-1">Payment</span>
+                        <span class="badge bg-danger ms-1">side effect</span>
+                        <span class="badge bg-primary ms-1">dedicated thread + timeout</span><br/>
+                        Card is charged on a separate thread with a hard deadline. If DOWN, declined, or timed out →
+                        <span class="text-warning fw-semibold">COMPENSATION: <code>releaseReservation</code></span>
+                        — stock returned to pool, no money moved.
+                    </div>
+
+                    <div class="saga-step danger">
+                        <strong>Step 5 — <code>createOrder</code></strong>
+                        <span class="badge bg-secondary ms-1">Database</span>
+                        <span class="badge bg-danger ms-1">side effect</span><br/>
+                        Order persisted to H2. If DB write fails →
+                        <span class="text-warning fw-semibold">COMPENSATION: <code>refund</code> + <code>releaseReservation</code>.</span>
+                    </div>
+
+                    <div class="saga-step danger">
+                        <strong>Step 6 — <code>commitReservation</code></strong>
+                        <span class="badge bg-secondary ms-1">Inventory</span>
+                        <span class="badge bg-danger ms-1">side effect</span><br/>
+                        The reservation becomes permanent (hold record removed). Hardest failure point — both payment and order already exist.
+                        If DOWN →
+                        <span class="text-warning fw-semibold">COMPENSATION: <code>refund</code> + <code>cancelOrder</code> + <code>releaseReservation</code>.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Scenario outcome table ──────────────────────────── -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold">Scenario Outcomes — What You Will Observe</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 small scenario-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width:25%">Scenario (preset)</th>
+                                <th style="width:45%">Saga trace &amp; compensations</th>
+                                <th style="width:30%">What the user sees</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <!-- PAYMENT -->
+                            <tr class="section-row"><td colspan="3">💳 Payment Service</td></tr>
+
+                            <tr>
+                                <td>Payment <strong>DOWN</strong></td>
+                                <td>
+                                    <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-ok">3✓</span>
+                                    <span class="s-fail">4✗ DOWN</span> →
+                                    <span class="s-comp">↩ releaseReservation</span>
+                                </td>
+                                <td>"Payment failed — no charge. Cart intact."</td>
+                            </tr>
+                            <tr>
+                                <td>Payment <strong>SLOW</strong> (2s &lt; 3s timeout)</td>
+                                <td>
+                                    <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-ok">3✓</span>
+                                    <span class="s-slow">4⏳ 2s wait</span>
+                                    <span class="s-ok">✓ 5✓ 6✓</span>
+                                </td>
+                                <td>Success after ~2-second pause on checkout submit</td>
+                            </tr>
+                            <tr>
+                                <td>Payment <strong>TIMEOUT</strong> (5s &gt; 3s)</td>
+                                <td>
+                                    <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-ok">3✓</span>
+                                    <span class="s-fail">4⏱ timeout</span> →
+                                    <span class="s-comp">↩ releaseReservation</span>
+                                </td>
+                                <td>"Service unavailable — timed out, no charge made"</td>
+                            </tr>
+                            <tr>
+                                <td>Payment <strong>FLAKY</strong></td>
+                                <td>
+                                    Odd calls: <span class="s-ok">1✓ 3✓ 4✓ 5✓ 6✓</span><br/>
+                                    Even calls: <span class="s-ok">1✓ 3✓</span>
+                                    <span class="s-fail">4✗</span> →
+                                    <span class="s-comp">↩ release</span>
+                                </td>
+                                <td>Alternates: success on 1st, error on 2nd, success on 3rd…</td>
+                            </tr>
+                            <tr>
+                                <td>Idempotency <strong>OFF</strong> (resubmit form)</td>
+                                <td>
+                                    Submit 1: <span class="s-ok">1✓ 3✓ 4✓ 5✓ 6✓</span> — charged<br/>
+                                    Submit 2 (Back → resubmit):
+                                    <span class="s-fail">4✓ again</span> — charged again
+                                </td>
+                                <td>Two separate charges appear in payment log. No saga error — the bug is silent.</td>
+                            </tr>
+
+                            <!-- INVENTORY -->
+                            <tr class="section-row"><td colspan="3">📦 Inventory Service</td></tr>
+
+                            <tr>
+                                <td>Inventory <strong>DOWN</strong> at check (Step 1)</td>
+                                <td>
+                                    <span class="s-fail">1✗ DOWN</span> — stops immediately<br/>
+                                    <span class="text-muted">No stock reserved. No payment attempted.</span>
+                                </td>
+                                <td>"Service unavailable" — safe to retry immediately</td>
+                            </tr>
+                            <tr>
+                                <td>Inventory <strong>DOWN</strong> at reserve (Step 3)</td>
+                                <td>
+                                    <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-fail">3✗ DOWN</span> — stops<br/>
+                                    <span class="text-muted">Availability confirmed but reservation failed. Payment never attempted.</span>
+                                </td>
+                                <td>"Service unavailable" — no side effects, safe to retry</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td>Inventory <strong>SLOW</strong> at reserve (4s) <span class="badge bg-warning text-dark">no timeout</span></td>
+                                <td>
+                                    <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-slow">3⏳ 4s (request thread blocked)</span>
+                                    <span class="s-ok">✓ 4✓ 5✓ 6✓</span><br/>
+                                    <span class="text-muted">Unlike payment, inventory runs on the servlet thread — no timeout exists.</span>
+                                </td>
+                                <td>Browser spinner for 4 seconds, then success. Servlet thread was tied up the whole time.</td>
+                            </tr>
+                            <tr>
+                                <td>Inventory <strong>DOWN</strong> at commit (Step 6)</td>
+                                <td>
+                                    <span class="s-ok">1✓ 3✓ 4✓ 5✓</span>
+                                    <span class="s-fail">6✗ DOWN</span> →<br/>
+                                    <span class="s-comp">↩ refund</span>
+                                    <span class="s-comp">↩ cancelOrder</span>
+                                    <span class="s-comp">↩ releaseReservation</span>
+                                </td>
+                                <td>"Checkout failed — payment refunded." Hardest scenario: all three compensations must fire.</td>
+                            </tr>
+
+                            <!-- PROMOTION -->
+                            <tr class="section-row"><td colspan="3">🏷 Promotion Service</td></tr>
+
+                            <tr>
+                                <td>Promotion <strong>DOWN</strong> + graceful degrade</td>
+                                <td>
+                                    <span class="s-ok">1✓</span>
+                                    <span class="s-deg">2⚠ DEGRADED</span>
+                                    <span class="s-ok">3✓ 4✓ 5✓ 6✓</span><br/>
+                                    <span class="text-muted">Must enter a promo code for Step 2 to be attempted.</span>
+                                </td>
+                                <td>Order succeeds at full price. Saga trace shows "DEGRADED" on Step 2.</td>
+                            </tr>
+                            <tr>
+                                <td>Promotion <strong>DOWN</strong> + hard fail</td>
+                                <td>
+                                    <span class="s-ok">1✓</span>
+                                    <span class="s-fail">2✗ DOWN</span> — aborts<br/>
+                                    <span class="text-muted">No stock reserved. No payment. Zero side effects.</span>
+                                </td>
+                                <td>"Service unavailable" — treat promotion as critical path</td>
+                            </tr>
+                            <tr>
+                                <td>Promotion <strong>FLAKY</strong> + graceful degrade</td>
+                                <td>
+                                    Odd calls: <span class="s-ok">2✓</span> — discount applied<br/>
+                                    Even calls: <span class="s-deg">2⚠ DEGRADED</span> — silently skipped<br/>
+                                    <span class="text-muted">Read-only — no compensation ever needed, safe to retry.</span>
+                                </td>
+                                <td>Alternates: discount applied / full price. No rollback — no side effects to undo.</td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                    </div>
+                    <div class="px-3 py-2 small text-muted border-top">
+                        <span class="s-ok">✓ OK</span> &ensp;
+                        <span class="s-fail">✗ FAILED</span> &ensp;
+                        <span class="s-comp">↩ compensation</span> &ensp;
+                        <span class="s-deg">⚠ DEGRADED</span> &ensp;
+                        <span class="s-skip">— skipped</span> &ensp;
+                        <span class="s-slow">⏳ slow</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Design principles ───────────────────────────────── -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold">Design Principles Illustrated</div>
+                <div class="card-body small">
+
+                    <div class="mb-3">
+                        <h6 class="fw-bold">1 — Saga Pattern (Compensating Transactions)</h6>
+                        <p class="mb-1">
+                            A distributed checkout cannot be wrapped in a single ACID transaction — payment and inventory
+                            live in separate systems. The Saga pattern sequences local operations and defines an explicit
+                            <em>compensating action</em> for each step that has side effects, so any failure can be undone
+                            in reverse order.
+                        </p>
+                        <p class="mb-0 text-muted">
+                            <strong>Caveat:</strong> compensations are themselves fallible. Production systems use an
+                            <em>outbox table</em> — compensating events are persisted first, then applied by a background
+                            worker with retry + exponential back-off, so even a crashed JVM cannot lose them.
+                        </p>
+                    </div>
+
+                    <hr/>
+
+                    <div class="mb-3">
+                        <h6 class="fw-bold">2 — Graceful Degradation (Critical vs. Non-Critical Dependencies)</h6>
+                        <p class="mb-1">
+                            The key question: <em>"Can the core business action succeed without this service?"</em>
+                            Payment and inventory are critical — their failure must abort checkout.
+                            The promotion service is non-critical — a customer can still buy without a discount.
+                            When it is DOWN, the saga logs a DEGRADED step and continues rather than rolling back.
+                        </p>
+                        <p class="mb-0 text-muted">
+                            <strong>In production:</strong> always emit a metric or alert when you degrade, even though the
+                            customer journey succeeds. Silent degradation hides outages from on-call engineers.
+                        </p>
+                    </div>
+
+                    <hr/>
+
+                    <div class="mb-3">
+                        <h6 class="fw-bold">3 — Timeouts, Threads, and Circuit Breakers</h6>
+                        <p class="mb-1">
+                            <strong>Payment</strong> runs on a dedicated daemon thread with a hard deadline
+                            (<span th:text="${config.paymentTimeoutMs} + ' ms'">3000 ms</span>).
+                            If it exceeds that limit, the future is cancelled and <code>releaseReservation</code> fires.
+                            This prevents a slow payment gateway from holding a servlet thread indefinitely.
+                        </p>
+                        <p class="mb-1">
+                            <strong>Inventory</strong> has no such protection — it runs directly on the request thread.
+                            Try the <em>Inventory SLOW at reserve</em> preset: the entire request stalls for 4 seconds.
+                            Under heavy load, a slow inventory service would exhaust the servlet thread pool and bring
+                            down the whole application.
+                        </p>
+                        <p class="mb-0 text-muted">
+                            <strong>In production:</strong> wrap every external call in a timeout, not just payment.
+                            Add a Resilience4j <code>@CircuitBreaker</code>: after N consecutive timeouts the breaker
+                            opens and subsequent calls fail fast (no thread blocking) until the service recovers.
+                        </p>
+                    </div>
+
+                    <hr/>
+
+                    <div class="mb-3">
+                        <h6 class="fw-bold">4 — Idempotency Keys and Retry Safety</h6>
+                        <p class="mb-1">
+                            A UUID is embedded as a hidden field when the checkout form loads. The payment service caches
+                            results by this key — a retry after a network glitch or page refresh replays the original result
+                            rather than issuing a second charge. Disable idempotency (preset above), checkout, use the
+                            browser Back button to resubmit, and observe the double-charge.
+                        </p>
+                        <p class="mb-1">
+                            <strong>Why idempotency is only on payment:</strong> the promotion and inventory services are
+                            read-only or explicitly compensated — retrying them is always safe without a key.
+                            Payment is the only call that both has a side effect (charges money) and may receive retries
+                            without a fresh user action.
+                        </p>
+                        <p class="mb-0 text-muted">
+                            <strong>In production:</strong> real gateways (Stripe, Adyen) accept an
+                            <code>Idempotency-Key</code> HTTP header. Generate it once, store it in your outbox alongside
+                            the order attempt, and replay on every retry.
+                        </p>
+                    </div>
+
+                    <hr/>
+
+                    <div class="mb-0">
+                        <h6 class="fw-bold">5 — Intermittent Failures and Retry Safety</h6>
+                        <p class="mb-1">
+                            FLAKY mode fails every other call — simulating an unstable network partition or a
+                            host that is restarting. For <strong>read-only</strong> operations (promotion lookup) this
+                            is safe to retry immediately: the FLAKY + graceful-degrade combination means every other
+                            checkout silently skips the discount with no data corruption. For <strong>write</strong>
+                            operations (payment) you must check idempotency before retrying — otherwise a successful
+                            charge that returned a network error will be charged again.
+                        </p>
+                        <p class="mb-0 text-muted">
+                            <strong>In production:</strong> Resilience4j <code>@Retry</code> with exponential back-off
+                            and jitter handles transient failures automatically.
+                            Always annotate retried methods with whether they are idempotent — only retry
+                            non-idempotent operations (payment) if an idempotency key is in place.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Two sources of truth ────────────────────────────── -->
+            <div class="card shadow-sm mb-4 border-warning">
+                <div class="card-header fw-bold bg-warning">Two Sources of Truth for Stock</div>
+                <div class="card-body small">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <p class="mb-1">
+                                <strong>Inventory stub</strong> (<code>ConcurrentHashMap</code>)<br/>
+                                Authoritative for checkout. <code>reserveStock</code> decrements it immediately;
+                                <code>releaseReservation</code> restores it. Prevents overselling under concurrent sessions.
+                            </p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="mb-1">
+                                <strong>Product table</strong> (H2 DB)<br/>
+                                Display value shown on product pages. Decremented only after a confirmed order via
+                                <code>ProductRepository.decrementStock()</code> — not at reservation time.
+                            </p>
+                        </div>
+                    </div>
+                    <hr class="my-2"/>
+                    <p class="mb-0 text-muted">
+                        When the inventory commit fails and a full rollback occurs, the DB stock counter is
+                        <em>not</em> decremented — the saga's compensation steps restore consistency without
+                        requiring a distributed lock or two-phase commit.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ── Production checklist ───────────────────────────── -->
+            <div class="card shadow-sm border-secondary">
+                <div class="card-header fw-bold bg-secondary text-white">What a Production System Would Add</div>
+                <div class="card-body small">
+                    <ul class="mb-0">
+                        <li><strong>Outbox table for compensations</strong> — write the compensating event to the DB in the same transaction as the order; a background worker retries it until it succeeds, surviving JVM crashes.</li>
+                        <li><strong>Timeouts on every external call</strong> — not just payment. Wrap inventory and promotion calls with a <code>CompletableFuture</code> or Resilience4j <code>@TimeLimiter</code>.</li>
+                        <li><strong>Circuit breakers</strong> — Resilience4j <code>@CircuitBreaker</code> opens after N consecutive failures, failing fast without blocking threads, and half-opens periodically to probe recovery.</li>
+                        <li><strong>Retry with back-off + jitter</strong> — Resilience4j <code>@Retry</code> on idempotent calls; never retry payment without an idempotency key in place.</li>
+                        <li><strong>Distributed tracing</strong> — propagate a trace ID (OpenTelemetry / Micrometer) across all service calls so a failed saga can be reconstructed end-to-end in Grafana or Jaeger.</li>
+                        <li><strong>Dead-letter queue</strong> — compensating actions that fail after N retries land in a DLQ for manual review rather than being silently dropped.</li>
+                        <li><strong>Idempotency key in the outbox</strong> — store the payment idempotency key alongside the pending order so every replay uses the same key.</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <p class="text-center text-muted small mt-4">
+        <a href="/checkout">Go to Checkout</a> · <a href="/">Back to Store</a>
+    </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
