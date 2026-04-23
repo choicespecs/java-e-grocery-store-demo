@@ -1,0 +1,40 @@
+# Maven build output
+target/
+
+# Maven wrapper jar (properties file is intentionally committed)
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE — IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE — Eclipse / STS
+.eclipse/
+.settings/
+.classpath
+.project
+.springBeans
+.sts4-cache/
+
+# IDE — VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+application-local.properties
+application-local.yml
+
+# Logs
+*.log
+logs/
+
+# Claude Code local settings
+.claude/
