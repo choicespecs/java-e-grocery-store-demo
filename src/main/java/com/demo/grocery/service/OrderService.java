@@ -15,6 +15,27 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+/**
+ * Handles the two @Transactional database operations in the checkout saga.
+ *
+ * <p>This class is deliberately separate from {@link CheckoutService} so that each DB
+ * write carries its own transaction boundary without wrapping the entire multi-step saga
+ * in a single long-running transaction.
+ *
+ * <h3>createOrder</h3>
+ * Called at Step 5 of the saga (after payment succeeds). Writes:
+ * <ul>
+ *   <li>One {@code grocery_order} row with status {@code CONFIRMED} and the payment token.</li>
+ *   <li>One {@code order_item} row per cart item — a snapshot, not a FK to {@code product}.</li>
+ *   <li>Decrements {@code product.stock_quantity} for each item to keep the display cache
+ *       roughly accurate (not the authoritative inventory counter).</li>
+ * </ul>
+ *
+ * <h3>cancelOrder</h3>
+ * Called as a compensating action at Step 6 if {@code commitReservation} fails.
+ * Sets {@code order.status = CANCELLED}. Does NOT restore {@code product.stock_quantity} —
+ * see CHAOS_ENGINEERING.md (Known Data Inconsistency After Rollback) for discussion.
+ */
 @Service
 public class OrderService {
 
@@ -52,6 +73,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    /**
+     * Compensating action for Step 6 failure: marks the order as CANCELLED.
+     * Called after the payment refund has been issued and before the inventory reservation
+     * is released (compensation order: refund → cancelOrder → releaseReservation).
+     */
     @Transactional
     public void cancelOrder(Order order) {
         order.setStatus(OrderStatus.CANCELLED);

@@ -23,6 +23,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Handles all cart operations: view, add, update, remove, and clear.
+ *
+ * <p>Route summary:
+ * <ul>
+ *   <li>{@code GET  /cart}        — renders the cart page; refreshes discounts on every load.</li>
+ *   <li>{@code POST /cart/add}    — adds a product (capped to available stock); redirects to {@code /}.</li>
+ *   <li>{@code POST /cart/update} — updates quantity for an existing item; redirects to {@code /cart}.</li>
+ *   <li>{@code POST /cart/remove} — removes an item; redirects to {@code /cart}.</li>
+ *   <li>{@code POST /cart/clear}  — empties the cart; redirects to {@code /cart}.</li>
+ * </ul>
+ *
+ * <p>Every mutation calls {@link #refreshDiscounts()} which re-evaluates both discount streams.
+ * The cart-promotion stream never faults; the coupon stream is gracefully degraded on failure —
+ * the cart continues with zero coupon discount and a {@code couponServiceDown} flag for the UI.
+ *
+ * <p>Quantities are capped to {@code product.getStockQuantity()} (the display cache) so
+ * users cannot request more units than are shown as available.
+ */
 @Controller
 @RequestMapping("/cart")
 public class CartController {

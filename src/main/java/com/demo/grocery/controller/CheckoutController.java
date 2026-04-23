@@ -17,6 +17,24 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+/**
+ * Handles the checkout page, saga invocation, and order confirmation.
+ *
+ * <p>Route summary:
+ * <ul>
+ *   <li>{@code GET  /checkout}                — renders the checkout form with a fresh idempotency key.</li>
+ *   <li>{@code POST /checkout}                — invokes the saga via {@link com.demo.grocery.service.CheckoutService};
+ *       maps each saga exception to a specific UI message and rollback note.</li>
+ *   <li>{@code GET  /checkout/confirmation/{id}} — renders the order confirmation page.</li>
+ * </ul>
+ *
+ * <p>Exception handling: five distinct exception types are caught and mapped to different
+ * UI messages. The {@link com.demo.grocery.demo.SagaTrace} accumulated during the failed
+ * saga is attached to the model so the Thymeleaf template can render a colour-coded
+ * step-by-step execution log.
+ *
+ * <p>On success the cart is cleared and the browser is redirected to the confirmation page.
+ */
 @Controller
 @RequestMapping("/checkout")
 public class CheckoutController {

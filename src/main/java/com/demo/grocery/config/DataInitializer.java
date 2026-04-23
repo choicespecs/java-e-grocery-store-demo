@@ -12,6 +12,28 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
+/**
+ * Seeds the database and in-memory inventory stub on every application startup.
+ *
+ * <p>Implements {@link org.springframework.boot.ApplicationRunner} so it runs after the
+ * application context is fully initialised. The entire seed operation runs inside a single
+ * {@code @Transactional} method, so all category and product rows are committed atomically.
+ *
+ * <p>16 products are created across 4 categories (Produce, Dairy, Bakery, Beverages).
+ * After each {@code Product} row is saved, its stock level is mirrored into
+ * {@link com.demo.grocery.external.inventory.stub.StubInventoryService} via
+ * {@code initializeStock()} so the two sources of truth start in sync.
+ *
+ * <p>Edge-case products seeded intentionally:
+ * <ul>
+ *   <li>Free Range Eggs — stock 0 (triggers "Out of Stock" badge, blocks add-to-cart)</li>
+ *   <li>Roma Tomatoes, Croissants — stock ≤ 3 (triggers "Low Stock" badge)</li>
+ * </ul>
+ *
+ * <p>Note: {@code StubInventoryService} is injected directly (not via the interface) because
+ * {@code initializeStock} is an implementation-specific operation not part of the
+ * {@link com.demo.grocery.external.inventory.InventoryService} contract.
+ */
 @Component
 public class DataInitializer implements ApplicationRunner {
 

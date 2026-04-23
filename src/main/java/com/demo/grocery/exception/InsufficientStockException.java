@@ -1,5 +1,16 @@
 package com.demo.grocery.exception;
 
+/**
+ * Thrown by {@link com.demo.grocery.external.inventory.stub.StubInventoryService#checkAvailability}
+ * when the requested quantity for a product exceeds what is currently available.
+ *
+ * <p>This is a Step 1 failure — no stock has been reserved and no side effects have occurred,
+ * so it is safe to retry. Caught by {@link com.demo.grocery.controller.CheckoutController}
+ * which renders an inline "items no longer available" message.
+ *
+ * <p>Carries the {@code productId}, {@code available} count, and {@code requested} count
+ * for diagnostic use.
+ */
 public class InsufficientStockException extends RuntimeException {
 
     private final Long productId;

@@ -6,6 +6,29 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JPA entity representing a completed (or cancelled) customer order.
+ *
+ * An {@code Order} is created at Step 5 of the checkout saga by
+ * {@link com.demo.grocery.service.OrderService#createOrder} with status {@code CONFIRMED}.
+ * If the final saga step (Step 6 — commit reservation) fails, the order is updated to
+ * {@code CANCELLED} by {@link com.demo.grocery.service.OrderService#cancelOrder} as a
+ * compensating action.
+ *
+ * <p>Fields:
+ * <ul>
+ *   <li>{@code subtotal}     — sum of all line items before any discount</li>
+ *   <li>{@code discount}     — promo-code discount only; cart-promotion and coupon discounts
+ *                              are already reflected in the {@code total}</li>
+ *   <li>{@code total}        — the amount actually charged to the payment service</li>
+ *   <li>{@code promoCode}    — nullable; set only if a valid promo code was applied</li>
+ *   <li>{@code paymentToken} — opaque token from {@link com.demo.grocery.external.payment.PaymentService};
+ *                              used to issue a refund if a later step fails</li>
+ * </ul>
+ *
+ * <p>The table is named {@code grocery_order} to avoid a conflict with the SQL reserved word
+ * {@code ORDER}.
+ */
 @Entity
 @Table(name = "grocery_order")
 public class Order {

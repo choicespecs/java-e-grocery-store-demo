@@ -11,6 +11,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
+/**
+ * Serves the product catalogue storefront at {@code GET /}.
+ *
+ * <p>The optional {@code category} query parameter filters products by category name
+ * (e.g. {@code /?category=Dairy}). Without it, all products across all categories are shown.
+ *
+ * <p>The model is enriched with:
+ * <ul>
+ *   <li>{@code products}         — the filtered (or full) product list</li>
+ *   <li>{@code selectedCategory} — echoed back for the active-state nav highlight</li>
+ *   <li>{@code cartDeals}        — automatic deal hints shown as badges on eligible products</li>
+ *   <li>{@code cartQtyMap}       — current quantities in cart for the in-stock availability check</li>
+ * </ul>
+ *
+ * <p>Category navigation and cart item count are injected automatically by
+ * {@link CartModelAdvice}.
+ */
 @Controller
 public class ProductController {
 

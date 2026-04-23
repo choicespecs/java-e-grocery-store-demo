@@ -118,14 +118,23 @@ src/main/java/com/demo/grocery/
 
 `CheckoutService` is the most important class. It coordinates six steps across three external services with explicit compensation at each failure point.
 
-```
-Step 1  inventoryService.checkAvailability()    read-only pre-flight, no side effects
-Step 2  promotionService.applyPromotion()        read-only; supports graceful degradation
-Step 3  inventoryService.reserveStock()          SIDE EFFECT: reduces available stock
-Step 4  paymentService.processPayment()          SIDE EFFECT: charges the card
-         └─ runs on a dedicated thread with a configurable deadline (paymentTimeoutMs)
-Step 5  orderService.createOrder()               DB write (@Transactional)
-Step 6  inventoryService.commitReservation()     finalises the hold
+```mermaid
+flowchart TD
+    S1["Step 1 — checkAvailability
+read-only pre-flight, no side effects"]
+    S2["Step 2 — applyPromotion
+read-only; supports graceful degradation"]
+    S3["Step 3 — reserveStock
+SIDE EFFECT: reduces available stock"]
+    S4["Step 4 — processPayment
+SIDE EFFECT: charges the card
+runs on a dedicated thread (paymentTimeoutMs deadline)"]
+    S5["Step 5 — createOrder
+DB write — @Transactional"]
+    S6["Step 6 — commitReservation
+finalises the hold permanently"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
 ```
 
 ### Compensation map
@@ -358,3 +367,6 @@ This demo intentionally omits several things that a real system would require:
 | Whole Milk (1 gal) | qty ≥ 3 | Buy 2, Get 1 Free |
 | Organic Apples (1 lb) | qty ≥ 4 | Save $2.00 |
 | Bananas (bunch) | qty ≥ 3 | Save $1.00 |
+| Cheddar Cheese (8 oz) | qty ≥ 2 | Save $1.50 |
+| Sparkling Water (12-pack) | qty ≥ 2 | Save $2.00 |
+| Orange Juice (52 oz) | qty ≥ 3 | Save $2.00 |

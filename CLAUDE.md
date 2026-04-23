@@ -51,16 +51,31 @@ exception/           Typed exception per failure mode; caught selectively in Che
 
 The most important class in the codebase. It coordinates three external services in sequence with explicit compensation at each failure point:
 
-```
-1. inventoryService.checkAvailability()   ← read-only pre-flight, no side effects
-2. promotionService.applyPromotion()      ← throws InvalidPromotionException on bad code
-3. inventoryService.reserveStock()        ← SIDE EFFECT: reduces available stock
-   └─ payment fails → releaseReservation  (COMPENSATION: stock returned to pool)
-4. paymentService.processPayment()        ← SIDE EFFECT: charges the card
-   └─ persist fails → refund + release    (COMPENSATION)
-5. orderService.createOrder()             ← writes to DB (@Transactional)
-   └─ commit fails → refund + cancel + release
-6. inventoryService.commitReservation()   ← finalises the hold (removes the reservation record)
+```mermaid
+flowchart TD
+    S1["1 — checkAvailability
+read-only pre-flight, no side effects"]
+    S2["2 — applyPromotion
+throws InvalidPromotionException on bad code"]
+    S3["3 — reserveStock
+SIDE EFFECT: reduces available stock"]
+    S4["4 — processPayment
+SIDE EFFECT: charges the card
+(dedicated thread, paymentTimeoutMs deadline)"]
+    S5["5 — createOrder
+writes to DB — @Transactional"]
+    S6["6 — commitReservation
+finalises the hold"]
+
+    C3["COMPENSATION: releaseReservation
+stock returned to pool"]
+    C4["COMPENSATION: refund + releaseReservation"]
+    C5["COMPENSATION: refund + cancelOrder + releaseReservation"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+    S4 -->|payment fails| C3
+    S5 -->|persist fails| C4
+    S6 -->|commit fails| C5
 ```
 
 `CheckoutService` is intentionally **not** `@Transactional` — the saga spans external calls that cannot be wrapped in a single DB transaction. Each individual DB write carries its own `@Transactional`.
