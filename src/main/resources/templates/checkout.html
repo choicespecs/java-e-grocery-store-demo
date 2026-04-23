@@ -77,8 +77,13 @@
                 <div class="card-footer">
                     <div th:if="${cart.cartPromotion.hasDeals()}"
                          class="d-flex justify-content-between text-success small mb-1">
-                        <span>Cart Savings</span>
+                        <span>Cart Deals</span>
                         <span th:text="'−$' + ${#numbers.formatDecimal(cart.cartPromotionDiscount, 1, 2)}">−$0.00</span>
+                    </div>
+                    <div th:if="${cart.couponResult.hasOffers()}"
+                         class="d-flex justify-content-between text-info small mb-1">
+                        <span>🎟 Coupons</span>
+                        <span th:text="'−$' + ${#numbers.formatDecimal(cart.couponDiscount, 1, 2)}">−$0.00</span>
                     </div>
                     <div class="d-flex justify-content-between fw-bold">
                         <span>Subtotal</span>
@@ -106,7 +111,10 @@
                                    placeholder="e.g. SAVE10"/>
                         </div>
                         <p class="text-muted small mt-2 mb-0">
-                            Try: <code>SAVE10</code>, <code>SAVE20</code>, <code>FLAT5</code>, <code>WELCOME</code>
+                            Try: <code>SAVE10</code> (10%), <code>SAVE20</code> (20%),
+                            <code>FLAT5</code> ($5 off), <code>WELCOME</code> (15%),
+                            <code>FRESH</code> ($4 off), <code>BIG25</code> (25%),
+                            <code>HALFOFF</code> (50%)
                         </p>
                     </div>
                 </div>

@@ -68,6 +68,9 @@
         <span th:unless="${config.paymentIdempotencyEnabled}">
             Payment idempotency = <strong>OFF</strong> &nbsp;
         </span>
+        <span th:if="${config.couponMode.name() != 'NORMAL'}">
+            Coupon engine = <strong th:text="${config.couponMode}"></strong> &nbsp;
+        </span>
     </div>
 
     <div class="row g-4">
@@ -179,15 +182,33 @@
                         </button>
                     </form>
                     <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-check-flaky"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Inventory <strong>FLAKY</strong> at availability check (Step 1)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-check-slow"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Inventory <strong>SLOW</strong> at check — 3s, no timeout (Step 1)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
                         <input type="hidden" name="scenario" value="inventory-reserve-down"/>
                         <button class="btn btn-outline-danger w-100 text-start">
                             Inventory <strong>DOWN</strong> at stock reserve (Step 3)
                         </button>
                     </form>
                     <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-reserve-flaky"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Inventory <strong>FLAKY</strong> at reserve (Step 3)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
                         <input type="hidden" name="scenario" value="inventory-reserve-slow"/>
                         <button class="btn btn-outline-warning w-100 text-start">
-                            Inventory <strong>SLOW</strong> at reserve — no timeout, thread blocks
+                            Inventory <strong>SLOW</strong> at reserve — 4s, no timeout (Step 3)
                         </button>
                     </form>
                     <form th:action="@{/demo/preset}" method="post">
@@ -196,10 +217,61 @@
                             Inventory <strong>DOWN</strong> at commit — full rollback (Step 6)
                         </button>
                     </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-commit-slow"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Inventory <strong>SLOW</strong> at commit — 3s, no timeout (Step 6)
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="inventory-commit-flaky"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Inventory <strong>FLAKY</strong> at commit — full rollback every 2nd (Step 6)
+                        </button>
+                    </form>
+
+                    <hr class="my-1"/>
+                    <small class="text-muted fw-semibold">🎟 COUPON ENGINE</small>
+                    <div class="alert alert-info py-1 px-2 mb-1 small">
+                        Only affects <strong>coupon offers</strong> (BOGO, bundles, spend thresholds, multi-buys).
+                        Quantity-based cart deals come from a separate <code>CartPromotionService</code>
+                        and are always active. The cart page shows a live <strong>⚡ Engine DOWN</strong>
+                        badge and marks each offer "unavailable" when this fault fires.
+                    </div>
+
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="coupon-down"/>
+                        <button class="btn btn-outline-danger w-100 text-start">
+                            Coupon engine <strong>DOWN</strong> — coupon offers only, not cart deals
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="coupon-flaky"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Coupon engine <strong>FLAKY</strong> — offers drop every other call
+                        </button>
+                    </form>
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="coupon-slow"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Coupon engine <strong>SLOW</strong> — 3s, cart mutations block thread
+                        </button>
+                    </form>
 
                     <hr class="my-1"/>
                     <small class="text-muted fw-semibold">🏷 PROMOTION SERVICE</small>
+                    <div class="alert alert-info py-1 px-2 mb-1 small">
+                        The promotion service is only called when a promo code is entered.
+                        The <strong>▶ Run Test</strong> button above uses <code>SAVE10</code> automatically.
+                        When testing via <a href="/checkout">Checkout</a> manually, enter any valid code.
+                    </div>
 
+                    <form th:action="@{/demo/preset}" method="post">
+                        <input type="hidden" name="scenario" value="promotion-slow"/>
+                        <button class="btn btn-outline-warning w-100 text-start">
+                            Promotion <strong>SLOW</strong> — 3s, no timeout, graceful degrade
+                        </button>
+                    </form>
                     <form th:action="@{/demo/preset}" method="post">
                         <input type="hidden" name="scenario" value="promotion-down-graceful"/>
                         <button class="btn btn-outline-warning w-100 text-start">
@@ -280,6 +352,15 @@
                             <label class="form-check-label" for="idempotencyCheck">
                                 Idempotency enabled (deduplicates retries)
                             </label>
+                        </div>
+
+                        <p class="fw-semibold mb-1">Coupon / Offer engine</p>
+                        <div class="mb-3">
+                            <select name="couponMode" class="form-select form-select-sm">
+                                <option th:each="m : ${modes}" th:value="${m}" th:text="${m}"
+                                        th:selected="${m == config.couponMode}"></option>
+                            </select>
+                            <div class="form-text">Evaluated on every cart add/update/remove. Fault = no offers, cart still works.</div>
                         </div>
 
                         <p class="fw-semibold mb-1">Promotion service</p>
@@ -450,6 +531,23 @@
                                 <td>"Service unavailable" — safe to retry immediately</td>
                             </tr>
                             <tr>
+                                <td>Inventory <strong>FLAKY</strong> at check (Step 1)</td>
+                                <td>
+                                    Odd calls: <span class="s-ok">1✓ 3✓ 4✓ 5✓ 6✓</span><br/>
+                                    Even calls: <span class="s-fail">1✗</span> — stops immediately, no side effects
+                                </td>
+                                <td>Alternates: success / "service unavailable". Safe to retry (no side effects on failure).</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td>Inventory <strong>SLOW</strong> at check (3s) <span class="badge bg-warning text-dark">no timeout</span></td>
+                                <td>
+                                    <span class="s-slow">1⏳ 3s (request thread blocked)</span>
+                                    <span class="s-ok">✓ 3✓ 4✓ 5✓ 6✓</span><br/>
+                                    <span class="text-muted">Blocks at the read-only pre-flight — no side effects, but thread is tied up.</span>
+                                </td>
+                                <td>Browser spinner for 3 seconds, then success. Same thread-starvation risk as reserve SLOW.</td>
+                            </tr>
+                            <tr>
                                 <td>Inventory <strong>DOWN</strong> at reserve (Step 3)</td>
                                 <td>
                                     <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
@@ -457,6 +555,15 @@
                                     <span class="text-muted">Availability confirmed but reservation failed. Payment never attempted.</span>
                                 </td>
                                 <td>"Service unavailable" — no side effects, safe to retry</td>
+                            </tr>
+                            <tr>
+                                <td>Inventory <strong>FLAKY</strong> at reserve (Step 3)</td>
+                                <td>
+                                    Odd calls: <span class="s-ok">1✓ 3✓ 4✓ 5✓ 6✓</span><br/>
+                                    Even calls: <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-fail">3✗</span> — stops before payment
+                                </td>
+                                <td>Alternates: success / "service unavailable". No charge on failure — safe to retry.</td>
                             </tr>
                             <tr class="table-warning">
                                 <td>Inventory <strong>SLOW</strong> at reserve (4s) <span class="badge bg-warning text-dark">no timeout</span></td>
@@ -479,10 +586,42 @@
                                 </td>
                                 <td>"Checkout failed — payment refunded." Hardest scenario: all three compensations must fire.</td>
                             </tr>
+                            <tr class="table-warning">
+                                <td>Inventory <strong>SLOW</strong> at commit (3s) <span class="badge bg-warning text-dark">no timeout</span></td>
+                                <td>
+                                    <span class="s-ok">1✓ 3✓ 4✓ 5✓</span>
+                                    <span class="s-slow">6⏳ 3s</span>
+                                    <span class="s-ok">✓</span><br/>
+                                    <span class="text-muted">Payment already settled before this step. Slow but succeeds — shows that even post-payment steps have no protection.</span>
+                                </td>
+                                <td>Checkout succeeds after a 3-second pause. Highlights that a crash here requires the full 3-way rollback.</td>
+                            </tr>
+                            <tr>
+                                <td>Inventory <strong>FLAKY</strong> at commit (Step 6)</td>
+                                <td>
+                                    Odd calls: <span class="s-ok">1✓ 3✓ 4✓ 5✓ 6✓</span><br/>
+                                    Even calls: <span class="s-ok">1✓ 3✓ 4✓ 5✓</span>
+                                    <span class="s-fail">6✗</span> →
+                                    <span class="s-comp">↩ refund</span>
+                                    <span class="s-comp">↩ cancelOrder</span>
+                                    <span class="s-comp">↩ releaseReservation</span>
+                                </td>
+                                <td>Alternates: success / "checkout failed — payment refunded". Full 3-way rollback on every other attempt.</td>
+                            </tr>
 
                             <!-- PROMOTION -->
                             <tr class="section-row"><td colspan="3">🏷 Promotion Service</td></tr>
 
+                            <tr class="table-warning">
+                                <td>Promotion <strong>SLOW</strong> (3s) + graceful degrade <span class="badge bg-warning text-dark">no timeout</span></td>
+                                <td>
+                                    <span class="s-ok">1✓</span>
+                                    <span class="s-slow">2⏳ 3s (request thread)</span>
+                                    <span class="s-ok">✓ 3✓ 4✓ 5✓ 6✓</span><br/>
+                                    <span class="text-muted">Promotion runs on the servlet thread with no deadline — same risk as inventory reserve SLOW.</span>
+                                </td>
+                                <td>Checkout pauses 3 seconds at Step 2, then succeeds with discount applied.</td>
+                            </tr>
                             <tr>
                                 <td>Promotion <strong>DOWN</strong> + graceful degrade</td>
                                 <td>
@@ -510,6 +649,54 @@
                                     <span class="text-muted">Read-only — no compensation ever needed, safe to retry.</span>
                                 </td>
                                 <td>Alternates: discount applied / full price. No rollback — no side effects to undo.</td>
+                            </tr>
+
+                            <!-- COUPON ENGINE -->
+                            <tr class="section-row"><td colspan="3">🎟 Coupon / Offer Engine</td></tr>
+
+                            <tr>
+                                <td>Coupon engine <strong>DOWN</strong></td>
+                                <td>
+                                    Cart evaluation returns no offers (graceful fallback to <code>CouponResult.none()</code>).<br/>
+                                    <span class="text-muted">Evaluated on every cart mutation — not part of the checkout saga steps.
+                                    Quantity-based cart deals (CartPromotionService) are a separate service and remain active.</span>
+                                </td>
+                                <td>Cart and checkout still work. Quantity deals (Buy 2 Get 1, etc.) still apply. Only coupon-tier offers (BOGO, bundles, spend thresholds) disappear.</td>
+                            </tr>
+                            <tr>
+                                <td>Coupon engine <strong>FLAKY</strong></td>
+                                <td>
+                                    Odd evaluations: coupon offers applied normally<br/>
+                                    Even evaluations: <code>ServiceUnavailableException</code> → fallback to <code>CouponResult.none()</code><br/>
+                                    <span class="text-muted">Quantity-based cart deals are unaffected — only the coupon tier alternates.</span>
+                                </td>
+                                <td>Coupon savings alternate between applied and dropped on each cart mutation. Cart deals remain steady throughout.</td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td>Coupon engine <strong>SLOW</strong> (3s) <span class="badge bg-warning text-dark">no timeout</span></td>
+                                <td>
+                                    Every cart add/update/remove blocks the request thread for 3 seconds.<br/>
+                                    <span class="text-muted">Coupon evaluation runs inline on the servlet thread — no timeout protection. Quantity deals are unaffected (separate service).</span>
+                                </td>
+                                <td>Each cart interaction (add, quantity change, remove) pauses 3 seconds. Same thread-starvation risk as inventory reserve SLOW.</td>
+                            </tr>
+
+                            <!-- CARD DECLINES (test card scenarios, not fault-injected) -->
+                            <tr class="section-row"><td colspan="3">💳 Card Decline Scenarios (test cards, no fault injection needed)</td></tr>
+
+                            <tr>
+                                <td>Card <strong>declined</strong> (<code>4000…0002</code>)<br/>
+                                    Card <strong>insufficient funds</strong> (<code>4000…9995</code>)<br/>
+                                    Card <strong>incorrect CVC</strong> (<code>4000…0127</code>)
+                                </td>
+                                <td>
+                                    <span class="s-ok">1✓</span> <span class="s-skip">2—</span>
+                                    <span class="s-ok">3✓</span>
+                                    <span class="s-fail">4✗ declined/funds/cvc</span> →
+                                    <span class="s-comp">↩ releaseReservation</span><br/>
+                                    <span class="text-muted">Payment throws <code>PaymentFailedException</code> — same compensation path as payment DOWN.</span>
+                                </td>
+                                <td>"Payment declined" / "Insufficient funds" / "Incorrect CVC" error. Stock reservation released; no order created.</td>
                             </tr>
 
                         </tbody>
@@ -553,8 +740,10 @@
                         <p class="mb-1">
                             The key question: <em>"Can the core business action succeed without this service?"</em>
                             Payment and inventory are critical — their failure must abort checkout.
-                            The promotion service is non-critical — a customer can still buy without a discount.
-                            When it is DOWN, the saga logs a DEGRADED step and continues rather than rolling back.
+                            The promotion service is non-critical — a customer can still buy without a promo-code discount.
+                            The coupon engine is also non-critical — evaluated on cart mutations, never inside the saga itself.
+                            Both degrade gracefully: coupon engine failures silently return no offers;
+                            promotion failures log a DEGRADED saga step and continue at full price.
                         </p>
                         <p class="mb-0 text-muted">
                             <strong>In production:</strong> always emit a metric or alert when you degrade, even though the

@@ -50,9 +50,12 @@ public class StubCartPromotionService implements CartPromotionService {
     }
 
     private static final List<DealDefinition> DEALS = List.of(
-        new DealDefinition("Whole Milk (1 gal)",    "Buy 2, Get 1 Free",  DealType.BUY_X_GET_Y_FREE,   3, 0),
-        new DealDefinition("Organic Apples (1 lb)", "Buy 4, Save $2.00",  DealType.QUANTITY_DOLLAR_OFF, 4, 2.00),
-        new DealDefinition("Bananas (bunch)",        "Buy 3, Save $1.00",  DealType.QUANTITY_DOLLAR_OFF, 3, 1.00)
+        new DealDefinition("Whole Milk (1 gal)",          "Buy 2, Get 1 Free",   DealType.BUY_X_GET_Y_FREE,   3, 0),
+        new DealDefinition("Organic Apples (1 lb)",       "Buy 4, Save $2.00",   DealType.QUANTITY_DOLLAR_OFF, 4, 2.00),
+        new DealDefinition("Bananas (bunch)",              "Buy 3, Save $1.00",   DealType.QUANTITY_DOLLAR_OFF, 3, 1.00),
+        new DealDefinition("Cheddar Cheese (8 oz)",       "Buy 2, Save $1.50",   DealType.QUANTITY_DOLLAR_OFF, 2, 1.50),
+        new DealDefinition("Sparkling Water (12-pack)",   "Buy 2, Save $2.00",   DealType.QUANTITY_DOLLAR_OFF, 2, 2.00),
+        new DealDefinition("Orange Juice (52 oz)",        "Buy 3, Save $2.00",   DealType.QUANTITY_DOLLAR_OFF, 3, 2.00)
     );
 
     @Override

@@ -44,7 +44,10 @@ public class StubPromotionService implements PromotionService {
         "SAVE10",  new PromoDefinition("10% off your order", 0.10, DiscountType.PERCENTAGE),
         "SAVE20",  new PromoDefinition("20% off your order", 0.20, DiscountType.PERCENTAGE),
         "FLAT5",   new PromoDefinition("$5.00 off your order", 5.00, DiscountType.FIXED),
-        "WELCOME", new PromoDefinition("15% off for new customers", 0.15, DiscountType.PERCENTAGE)
+        "WELCOME", new PromoDefinition("15% off for new customers", 0.15, DiscountType.PERCENTAGE),
+        "FRESH",   new PromoDefinition("$4.00 off fresh picks", 4.00, DiscountType.FIXED),
+        "BIG25",   new PromoDefinition("25% off your order", 0.25, DiscountType.PERCENTAGE),
+        "HALFOFF", new PromoDefinition("50% off your order", 0.50, DiscountType.PERCENTAGE)
     );
 
     private final DemoFaultConfig faultConfig;

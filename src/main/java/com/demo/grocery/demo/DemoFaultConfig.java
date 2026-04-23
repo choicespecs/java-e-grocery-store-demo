@@ -36,6 +36,10 @@ public class DemoFaultConfig {
     private volatile boolean promotionGracefulDegradation = true;
     private final AtomicInteger promotionFlakyCounter = new AtomicInteger(0);
 
+    // --- Coupon / Offer Engine ---
+    private volatile FaultMode couponMode = FaultMode.NORMAL;
+    private final AtomicInteger couponFlakyCounter = new AtomicInteger(0);
+
     // --- Shared ---
     private volatile int slowDelayMs = 5000;
     /**
@@ -53,6 +57,7 @@ public class DemoFaultConfig {
         inventoryCommitMode  = FaultMode.NORMAL;
         paymentMode          = FaultMode.NORMAL;
         promotionMode        = FaultMode.NORMAL;
+        couponMode           = FaultMode.NORMAL;
         promotionGracefulDegradation = true;
         paymentIdempotencyEnabled    = true;
         slowDelayMs = 5000;
@@ -60,6 +65,7 @@ public class DemoFaultConfig {
         inventoryFlakyCounter.set(0);
         paymentFlakyCounter.set(0);
         promotionFlakyCounter.set(0);
+        couponFlakyCounter.set(0);
     }
 
     public boolean isAllNormal() {
@@ -67,7 +73,8 @@ public class DemoFaultConfig {
             && inventoryReserveMode == FaultMode.NORMAL
             && inventoryCommitMode  == FaultMode.NORMAL
             && paymentMode          == FaultMode.NORMAL
-            && promotionMode        == FaultMode.NORMAL;
+            && promotionMode        == FaultMode.NORMAL
+            && couponMode           == FaultMode.NORMAL;
     }
 
     // ---- Getters / Setters ---------------------------------------------------
@@ -98,6 +105,11 @@ public class DemoFaultConfig {
     public void setPromotionGracefulDegradation(boolean b) { promotionGracefulDegradation = b; }
 
     public AtomicInteger getPromotionFlakyCounter() { return promotionFlakyCounter; }
+
+    public FaultMode getCouponMode() { return couponMode; }
+    public void setCouponMode(FaultMode m) { couponMode = m; }
+
+    public AtomicInteger getCouponFlakyCounter() { return couponFlakyCounter; }
 
     public int getSlowDelayMs() { return slowDelayMs; }
     public void setSlowDelayMs(int ms) { slowDelayMs = ms; }

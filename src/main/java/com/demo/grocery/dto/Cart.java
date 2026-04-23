@@ -2,6 +2,7 @@ package com.demo.grocery.dto;
 
 import com.demo.grocery.domain.Product;
 import com.demo.grocery.external.cartpromotion.CartPromotionResult;
+import com.demo.grocery.external.coupon.CouponResult;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.SessionScope;
 
@@ -18,6 +19,8 @@ public class Cart implements Serializable {
 
     private final Map<Long, CartItem> items = new LinkedHashMap<>();
     private CartPromotionResult cartPromotion = CartPromotionResult.none();
+    private CouponResult couponResult = CouponResult.none();
+    private boolean couponServiceDown = false;
 
     public void addItem(Product product, int quantity) {
         items.merge(
@@ -51,9 +54,31 @@ public class Cart implements Serializable {
         return cartPromotion;
     }
 
+    public void applyCoupons(CouponResult result) {
+        this.couponResult = result;
+    }
+
+    public CouponResult getCouponResult() {
+        return couponResult;
+    }
+
+    public BigDecimal getCouponDiscount() {
+        return couponResult.totalDiscount();
+    }
+
+    public boolean isCouponServiceDown() {
+        return couponServiceDown;
+    }
+
+    public void setCouponServiceDown(boolean couponServiceDown) {
+        this.couponServiceDown = couponServiceDown;
+    }
+
     public void clear() {
         items.clear();
         cartPromotion = CartPromotionResult.none();
+        couponResult = CouponResult.none();
+        couponServiceDown = false;
     }
 
     public Collection<CartItem> getItems() {
@@ -77,7 +102,10 @@ public class Cart implements Serializable {
     }
 
     public BigDecimal getEffectiveTotal() {
-        return getSubtotal().subtract(cartPromotion.totalDiscount()).max(BigDecimal.ZERO);
+        return getSubtotal()
+                .subtract(cartPromotion.totalDiscount())
+                .subtract(couponResult.totalDiscount())
+                .max(BigDecimal.ZERO);
     }
 
     public boolean isEmpty() {

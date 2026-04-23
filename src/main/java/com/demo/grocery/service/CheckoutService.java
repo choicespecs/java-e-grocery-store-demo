@@ -116,6 +116,7 @@ public class CheckoutService {
 
         BigDecimal finalTotal = cart.getSubtotal()
             .subtract(cart.getCartPromotionDiscount())
+            .subtract(cart.getCouponDiscount())
             .subtract(promotion.discount())
             .max(BigDecimal.ZERO);
 

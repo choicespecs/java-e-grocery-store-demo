@@ -93,6 +93,24 @@ Active deals (defined in `StubCartPromotionService`):
 | Whole Milk (1 gal) | qty ≥ 3 | Buy 2, Get 1 Free |
 | Organic Apples (1 lb) | qty ≥ 4 | Save $2.00 |
 | Bananas (bunch) | qty ≥ 3 | Save $1.00 |
+| Cheddar Cheese (8 oz) | qty ≥ 2 | Save $1.50 |
+| Sparkling Water (12-pack) | qty ≥ 2 | Save $2.00 |
+| Orange Juice (52 oz) | qty ≥ 3 | Save $2.00 |
+
+Active coupon offers (defined in `StubCouponService`) — subject to fault injection:
+
+| Offer | Trigger | Discount |
+|---|---|---|
+| BOGO — Croissants (2-pack) | qty ≥ 2 | Every 2nd pack free |
+| Bundle — Baby Spinach + Greek Yogurt | both in cart | $1.50 off |
+| Multi-buy — Blueberry Muffins | qty ≥ 2 | $2.00 off |
+| Multi-buy — Cold Brew Coffee | qty ≥ 2 | $3.00 off |
+| Bundle — Sourdough Bread + Cheddar Cheese | both in cart | $1.50 off |
+| Multi-buy — Whole Wheat Bagels | qty ≥ 2 | $1.50 off |
+| Bundle — Herbal Tea + Orange Juice | both in cart | $1.50 off |
+| Spend threshold | cart ≥ $20 | $3.00 off |
+
+`getOfferCatalog()` on `CouponService` is never fault-injected — returns static metadata so the cart UI can show "unavailable" per offer even when the engine is DOWN.
 
 ### Chaos Engineering Panel (`/demo`)
 
@@ -104,8 +122,11 @@ Inventory has three independent fault points (`checkAvailability`, `reserveStock
 
 One-click presets (handled in `DemoController.applyPreset`):
 - `all-normal`, `payment-down`, `payment-slow`, `payment-timeout`, `payment-flaky`, `payment-no-idempotency`
-- `inventory-check-down`, `inventory-reserve-down`, `inventory-reserve-slow`, `inventory-commit-down`
-- `promotion-down-graceful`, `promotion-down-hard`, `promotion-flaky`
+- `inventory-check-down`, `inventory-check-flaky`, `inventory-check-slow`
+- `inventory-reserve-down`, `inventory-reserve-flaky`, `inventory-reserve-slow`
+- `inventory-commit-down`, `inventory-commit-slow`, `inventory-commit-flaky`
+- `promotion-slow`, `promotion-down-graceful`, `promotion-down-hard`, `promotion-flaky`
+- `coupon-down`, `coupon-flaky`, `coupon-slow`
 
 `SagaTrace` accumulates a per-request step log (`ok`, `failed`, `compensated`, `skipped`, `degraded`). The controller adds it to the model on any checkout failure so the template renders a colour-coded execution trace.
 
@@ -137,7 +158,7 @@ The two-phase flow (reserve → commit/release) prevents overselling when concur
 | 4000 0000 0000 9995  | Insufficient funds → rollback |
 | 4000 0000 0000 0127  | Incorrect CVC → rollback      |
 
-**Test promo codes:** `SAVE10` (10% off), `SAVE20` (20% off), `FLAT5` ($5 off), `WELCOME` (15% off)
+**Test promo codes:** `SAVE10` (10%), `SAVE20` (20%), `FLAT5` ($5), `WELCOME` (15%), `FRESH` ($4), `BIG25` (25%), `HALFOFF` (50%)
 
 **Cart deal trigger quantities** (no code needed — automatic at cart-add time):
 
@@ -146,3 +167,6 @@ The two-phase flow (reserve → commit/release) prevents overselling when concur
 | Whole Milk (1 gal) | qty ≥ 3 | Buy 2, Get 1 Free |
 | Organic Apples (1 lb) | qty ≥ 4 | Save $2.00 |
 | Bananas (bunch) | qty ≥ 3 | Save $1.00 |
+| Cheddar Cheese (8 oz) | qty ≥ 2 | Save $1.50 |
+| Sparkling Water (12-pack) | qty ≥ 2 | Save $2.00 |
+| Orange Juice (52 oz) | qty ≥ 3 | Save $2.00 |

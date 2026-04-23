@@ -6,6 +6,9 @@ import com.demo.grocery.demo.SagaTrace;
 import com.demo.grocery.domain.Order;
 import com.demo.grocery.dto.Cart;
 import com.demo.grocery.dto.CheckoutRequest;
+import com.demo.grocery.exception.ServiceUnavailableException;
+import com.demo.grocery.external.coupon.CouponResult;
+import com.demo.grocery.external.coupon.CouponService;
 import com.demo.grocery.service.CheckoutService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,11 +24,14 @@ public class DemoController {
     private final DemoFaultConfig faultConfig;
     private final Cart cart;
     private final CheckoutService checkoutService;
+    private final CouponService couponService;
 
-    public DemoController(DemoFaultConfig faultConfig, Cart cart, CheckoutService checkoutService) {
+    public DemoController(DemoFaultConfig faultConfig, Cart cart,
+                          CheckoutService checkoutService, CouponService couponService) {
         this.faultConfig = faultConfig;
         this.cart = cart;
         this.checkoutService = checkoutService;
+        this.couponService = couponService;
     }
 
     @GetMapping
@@ -44,6 +50,7 @@ public class DemoController {
             @RequestParam(defaultValue = "false") boolean paymentIdempotencyEnabled,
             @RequestParam FaultMode promotionMode,
             @RequestParam(defaultValue = "false") boolean promotionGracefulDegradation,
+            @RequestParam FaultMode couponMode,
             @RequestParam int slowDelayMs,
             @RequestParam int paymentTimeoutMs,
             RedirectAttributes ra) {
@@ -55,6 +62,7 @@ public class DemoController {
         faultConfig.setPaymentIdempotencyEnabled(paymentIdempotencyEnabled);
         faultConfig.setPromotionMode(promotionMode);
         faultConfig.setPromotionGracefulDegradation(promotionGracefulDegradation);
+        faultConfig.setCouponMode(couponMode);
         faultConfig.setSlowDelayMs(slowDelayMs);
         faultConfig.setPaymentTimeoutMs(paymentTimeoutMs);
 
@@ -107,10 +115,43 @@ public class DemoController {
                 faultConfig.setInventoryCommitMode(FaultMode.DOWN);
                 yield "Inventory DOWN at commit — payment charged + order saved, then full saga rollback.";
             }
+            case "inventory-check-flaky" -> {
+                faultConfig.setInventoryCheckMode(FaultMode.FLAKY);
+                yield "Inventory FLAKY at availability check (Step 1) — every other checkout fails at the read-only pre-flight. No side effects on failure; safe to retry.";
+            }
+            case "inventory-check-slow" -> {
+                faultConfig.setInventoryCheckMode(FaultMode.SLOW);
+                faultConfig.setSlowDelayMs(3000);
+                yield "Inventory SLOW at availability check (3s, Step 1) — request thread blocks on the read-only pre-flight. No timeout: demonstrates why every external call needs a deadline, not just payment.";
+            }
+            case "inventory-reserve-flaky" -> {
+                faultConfig.setInventoryReserveMode(FaultMode.FLAKY);
+                yield "Inventory FLAKY at reserve (Step 3) — every other call fails before payment is attempted. No charge made; safe to retry.";
+            }
             case "inventory-reserve-slow" -> {
                 faultConfig.setInventoryReserveMode(FaultMode.SLOW);
                 faultConfig.setSlowDelayMs(4000);
                 yield "Inventory SLOW at reserve (4 s) — the request thread blocks for 4 seconds. Unlike payment, there is no dedicated thread or timeout protecting this call. Demonstrates why every external call needs a deadline, not just payment.";
+            }
+            case "inventory-commit-slow" -> {
+                faultConfig.setInventoryCommitMode(FaultMode.SLOW);
+                faultConfig.setSlowDelayMs(3000);
+                yield "Inventory SLOW at commit (3s, Step 6) — payment is already settled before this step. Succeeds after delay, but highlights that commit has no timeout and a crashed service here would require the full 3-way compensation.";
+            }
+            case "inventory-commit-flaky" -> {
+                faultConfig.setInventoryCommitMode(FaultMode.FLAKY);
+                yield "Inventory FLAKY at commit (Step 6) — every other call triggers full 3-way rollback: refund + cancelOrder + releaseReservation.";
+            }
+            case "coupon-slow" -> {
+                faultConfig.setCouponMode(FaultMode.SLOW);
+                faultConfig.setSlowDelayMs(3000);
+                yield "Coupon engine SLOW (3s) — every cart add/update/remove blocks the request thread for 3 seconds. Like inventory reserve, there is no timeout protecting this call.";
+            }
+            case "promotion-slow" -> {
+                faultConfig.setPromotionMode(FaultMode.SLOW);
+                faultConfig.setPromotionGracefulDegradation(true);
+                faultConfig.setSlowDelayMs(3000);
+                yield "Promotion SLOW (3s) + graceful degradation ON — Step 2 blocks the checkout request thread for 3 seconds. No timeout on this call either; succeeds after the delay.";
             }
             case "promotion-down-graceful" -> {
                 faultConfig.setPromotionMode(FaultMode.DOWN);
@@ -126,6 +167,14 @@ public class DemoController {
                 faultConfig.setPromotionMode(FaultMode.FLAKY);
                 faultConfig.setPromotionGracefulDegradation(true);
                 yield "Promotion FLAKY + graceful degradation ON — every other promo-code lookup fails silently; checkout continues at full price. Safe to retry: promotion is read-only, so no compensation is ever needed.";
+            }
+            case "coupon-down" -> {
+                faultConfig.setCouponMode(FaultMode.DOWN);
+                yield "Coupon engine DOWN — coupon offers (BOGO, bundles, spend thresholds) are not applied. Quantity-based cart deals (Buy 2 Get 1, etc.) come from a separate service and remain active.";
+            }
+            case "coupon-flaky" -> {
+                faultConfig.setCouponMode(FaultMode.FLAKY);
+                yield "Coupon engine FLAKY — coupon offers apply on odd calls and are dropped on even calls. Quantity-based cart deals are unaffected.";
             }
             default -> "Unknown preset.";
         };
@@ -147,6 +196,14 @@ public class DemoController {
             return "demo";
         }
 
+        // Re-evaluate coupons against the current fault state so the test reflects
+        // any coupon-engine preset applied since the items were last added to the cart.
+        try {
+            cart.applyCoupons(couponService.evaluate(cart.getItems()));
+        } catch (ServiceUnavailableException e) {
+            cart.applyCoupons(CouponResult.none());
+        }
+
         CheckoutRequest request = new CheckoutRequest();
         request.setCardNumber("4111111111111111");
         request.setCardHolderName("Demo Tester");
@@ -154,6 +211,10 @@ public class DemoController {
         request.setExpiryYear("2099");
         request.setCvv("123");
         request.setIdempotencyKey(UUID.randomUUID().toString());
+        // Always include a promo code so the promotion service is exercised on every
+        // test run — without one, step 2 is unconditionally skipped and promotion
+        // faults can never fire.
+        request.setPromoCode("SAVE10");
 
         SagaTrace trace = new SagaTrace();
         boolean succeeded = false;

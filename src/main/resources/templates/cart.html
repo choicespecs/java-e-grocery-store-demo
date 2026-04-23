@@ -18,7 +18,7 @@
     </div>
 </nav>
 
-<div class="container" style="max-width:700px">
+<div class="container" style="max-width:900px">
     <h2 class="mb-4">Your Cart</h2>
 
     <!-- Empty cart -->
@@ -68,9 +68,15 @@
                 <td></td>
             </tr>
             <tr th:if="${cart.cartPromotion.hasDeals()}" class="table-success">
-                <td colspan="3" class="text-end text-success fw-semibold">Cart Savings</td>
+                <td colspan="3" class="text-end text-success fw-semibold">🏷 Cart Deals</td>
                 <td class="text-end text-success fw-semibold"
                     th:text="'−$' + ${#numbers.formatDecimal(cart.cartPromotionDiscount, 1, 2)}">−$0.00</td>
+                <td></td>
+            </tr>
+            <tr th:if="${cart.couponResult.hasOffers()}" class="table-info">
+                <td colspan="3" class="text-end text-info fw-semibold">🎟 Coupon Offers</td>
+                <td class="text-end text-info fw-semibold"
+                    th:text="'−$' + ${#numbers.formatDecimal(cart.couponDiscount, 1, 2)}">−$0.00</td>
                 <td></td>
             </tr>
             <tr class="table-light fw-bold">
@@ -81,26 +87,107 @@
             </tfoot>
         </table>
 
-        <!-- Active cart deals -->
-        <div th:if="${cart.cartPromotion.hasDeals()}"
-             class="alert alert-success py-2 mb-3 d-flex flex-wrap gap-2 align-items-center">
-            <strong class="me-1">Deals applied:</strong>
-            <span th:each="deal : ${cart.cartPromotion.deals}"
-                  class="badge bg-success fs-6 fw-normal px-3 py-2">
-                🏷 <span th:text="${deal.productName}"></span> — <span th:text="${deal.description}"></span>
-                &nbsp;(−$<span th:text="${#numbers.formatDecimal(deal.discount, 1, 2)}"></span>)
-            </span>
+        <!-- ── Deals & Offers Panel ──────────────────────────────────────────── -->
+        <div class="row g-3 mb-3">
+
+            <!-- Cart Deals (CartPromotionService — always active, never fault-injected) -->
+            <div class="col-md-6">
+                <div class="card border-success h-100">
+                    <div class="card-header bg-success text-white fw-semibold small d-flex justify-content-between align-items-center">
+                        🏷 Cart Deals
+                        <span class="badge bg-white text-success">Always Active</span>
+                    </div>
+                    <ul class="list-group list-group-flush small">
+                        <li th:each="entry : ${cartDealHints.entrySet()}"
+                            class="list-group-item py-2 px-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <span th:if="${appliedDealProducts.contains(entry.key)}"
+                                          class="text-success fw-bold me-1">✓</span>
+                                    <span th:unless="${appliedDealProducts.contains(entry.key)}"
+                                          class="text-muted me-1">○</span>
+                                    <strong th:text="${entry.key}"></strong><br/>
+                                    <span class="text-muted" th:text="${entry.value.description}"></span>
+                                    <span th:unless="${appliedDealProducts.contains(entry.key)}">
+                                        <br/><small class="text-secondary"
+                                            th:with="inCart=${cartNameToQty[entry.key] ?: 0},
+                                                     needed=${entry.value.minQuantity - inCart}">
+                                            add <span th:text="${needed}"></span> more to unlock
+                                            <span th:if="${inCart > 0}" class="text-muted"
+                                                  th:text="'(have ' + ${inCart} + ')'"></span>
+                                        </small>
+                                    </span>
+                                </div>
+                                <div class="text-end flex-shrink-0">
+                                    <span th:if="${appliedDealProducts.contains(entry.key)}"
+                                          class="badge bg-success"
+                                          th:text="'−$' + ${#numbers.formatDecimal(appliedDealDiscounts[entry.key], 1, 2)}">
+                                    </span>
+                                    <span th:unless="${appliedDealProducts.contains(entry.key)}"
+                                          class="badge bg-light text-dark border">locked</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Coupon Offers (CouponService — fault-injectable, graceful degradation) -->
+            <div class="col-md-6">
+                <div class="card h-100"
+                     th:classappend="${couponServiceDown} ? 'border-danger' : 'border-info'">
+                    <div class="card-header fw-semibold small d-flex justify-content-between align-items-center"
+                         th:classappend="${couponServiceDown} ? 'bg-danger text-white' : 'bg-info text-dark'">
+                        🎟 Coupon Offers
+                        <span th:if="${couponServiceDown}"
+                              class="badge bg-white text-danger">⚡ Engine DOWN</span>
+                        <span th:unless="${couponServiceDown}"
+                              class="badge bg-dark text-white">✓ Online</span>
+                    </div>
+
+                    <div th:if="${couponServiceDown}"
+                         class="alert alert-danger mx-2 mt-2 mb-0 py-2 small">
+                        <strong>Coupon engine unavailable.</strong>
+                        Offers cannot be evaluated — cart deals (left) are unaffected.
+                        <a href="/demo" class="alert-link">Chaos Panel</a>
+                    </div>
+
+                    <ul class="list-group list-group-flush small">
+                        <li th:each="hint : ${couponCatalog}"
+                            class="list-group-item py-2 px-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <span th:if="${couponServiceDown}"
+                                          class="text-danger fw-bold me-1">✗</span>
+                                    <span th:if="${!couponServiceDown and appliedOfferIds.contains(hint.offerId)}"
+                                          class="text-success fw-bold me-1">✓</span>
+                                    <span th:if="${!couponServiceDown and !appliedOfferIds.contains(hint.offerId)}"
+                                          class="text-muted me-1">○</span>
+                                    <strong th:text="${hint.title}"></strong><br/>
+                                    <small class="text-muted"
+                                           th:text="${couponServiceDown} ? 'Service unavailable' : ${hint.hint}">
+                                    </small>
+                                </div>
+                                <div class="text-end flex-shrink-0">
+                                    <span th:if="${!couponServiceDown and appliedOfferIds.contains(hint.offerId)}"
+                                          class="badge bg-info text-dark"
+                                          th:text="'−$' + ${#numbers.formatDecimal(appliedOfferDiscounts[hint.offerId], 1, 2)}">
+                                    </span>
+                                    <span th:if="${couponServiceDown}"
+                                          class="badge bg-danger">unavailable</span>
+                                    <span th:if="${!couponServiceDown and !appliedOfferIds.contains(hint.offerId)}"
+                                          class="badge bg-light text-dark border">locked</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Available deals hint -->
-        <div class="alert alert-light border small text-muted mb-3">
-            <strong>Available deals:</strong>
-            Add 3× <em>Whole Milk</em> for Buy 2 Get 1 Free &nbsp;·&nbsp;
-            Add 4× <em>Organic Apples</em> to save $2.00 &nbsp;·&nbsp;
-            Add 3× <em>Bananas</em> to save $1.00
-        </div>
-
-        <div class="d-flex justify-content-between mt-3">
+        <!-- Checkout actions -->
+        <div class="d-flex justify-content-between mt-2">
             <div>
                 <a href="/" class="btn btn-outline-secondary me-2">← Continue Shopping</a>
                 <form th:action="@{/cart/clear}" method="post" class="d-inline">
