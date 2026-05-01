@@ -1,1455 +1,1479 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fresh Groceries — Interactive Learning Guide</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learning Guide — Java E-Grocery Store Demo</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg: #0d1117;
       --surface: #161b22;
-      --surface2: #1c2330;
-      --surface3: #21262d;
+      --surface2: #1c2128;
       --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
       --accent: #58a6ff;
       --accent2: #3fb950;
-      --accent3: #d2a8ff;
-      --accent4: #ffa657;
-      --accent5: #ff7b72;
+      --accent3: #d29922;
+      --accent4: #bc8cff;
+      --accent5: #f85149;
+      --text: #e6edf3;
+      --muted: #8b949e;
       --ok: #3fb950;
+      --fail: #f85149;
       --warn: #d29922;
-      --error: #f85149;
-      --info: #58a6ff;
+      --comp: #bc8cff;
+      --skip: #8b949e;
     }
 
-    html, body { height: 100%; }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      display: flex;
-      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 14px;
       min-height: 100vh;
     }
 
-    /* ─── TOP NAV ─── */
-    .topnav {
-      background: var(--surface);
+    /* ─── NAV ─────────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       padding: 0 1.5rem;
-      height: 52px;
-      gap: 1.5rem;
-      position: sticky; top: 0; z-index: 100;
+      height: 54px;
+      gap: 0;
     }
 
-    .topnav-logo {
+    .nav-brand {
       font-weight: 700;
       font-size: 0.95rem;
-      color: var(--accent);
+      color: var(--text);
       text-decoration: none;
+      margin-right: 2rem;
       white-space: nowrap;
     }
+
+    .nav-brand span { color: var(--accent); }
 
     .tabs {
       display: flex;
-      gap: 0.15rem;
-      overflow-x: auto;
-      scrollbar-width: none;
+      gap: 0;
+      flex: 1;
+      height: 100%;
     }
-    .tabs::-webkit-scrollbar { display: none; }
 
-    .tab {
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0 1.1rem;
+      height: 100%;
+      font-size: 0.88rem;
       font-weight: 500;
       cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
       white-space: nowrap;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      transition: background 0.15s, color 0.15s;
     }
-    .tab:hover { background: var(--surface3); color: var(--text); }
-    .tab.active { background: var(--surface3); color: var(--accent); }
 
-    .back-link {
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .nav-back {
       margin-left: auto;
-      font-size: 0.82rem;
       color: var(--muted);
       text-decoration: none;
-      white-space: nowrap;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
     }
-    .back-link:hover { color: var(--text); }
 
-    /* ─── MAIN PANELS ─── */
-    .panel { display: none; flex: 1; }
-    .panel.active { display: flex; }
+    .nav-back:hover { color: var(--text); }
 
-    /* ─── ARCHITECTURE PANEL ─── */
-    #panel-arch {
+    /* ─── PANELS ──────────────────────────────────────────────────────────────── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ─── ARCHITECTURE PANEL ──────────────────────────────────────────────────── */
+    #arch-panel {
+      display: none;
       flex-direction: row;
-      overflow: hidden;
-      height: calc(100vh - 52px);
+      height: calc(100vh - 54px);
     }
 
-    .arch-canvas {
+    #arch-panel.active { display: flex; }
+
+    #diagram-area {
       flex: 1;
-      overflow: auto;
       position: relative;
-      background: radial-gradient(ellipse at 30% 30%, #1a2438 0%, var(--bg) 70%);
+      overflow: hidden;
+      background: radial-gradient(ellipse at 40% 40%, #161b22 0%, #0d1117 100%);
     }
 
-    #arch-svg {
-      display: block;
-      margin: auto;
-      min-width: 900px;
+    #diagram-svg {
+      width: 100%;
+      height: 100%;
+      cursor: default;
+      user-select: none;
     }
 
-    .arch-sidebar {
-      width: 360px;
-      min-width: 300px;
-      background: var(--surface);
-      border-left: 1px solid var(--border);
-      overflow-y: auto;
-      padding: 1.5rem;
+    .node-group { cursor: grab; }
+    .node-group:active { cursor: grabbing; }
+
+    .node-rect {
+      rx: 10;
+      ry: 10;
+      stroke-width: 1.5;
+      transition: filter 0.15s;
+    }
+
+    .node-group:hover .node-rect { filter: brightness(1.25); }
+    .node-group.selected .node-rect { stroke-width: 2.5; }
+
+    .node-label {
+      fill: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .node-sub {
+      fill: #8b949e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .edge-line {
+      stroke-width: 1.5;
+      fill: none;
+      opacity: 0.55;
+    }
+
+    .edge-label {
+      fill: #8b949e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .tier-label {
+      fill: #30363d;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      pointer-events: none;
+    }
+
+    /* animated packet */
+    .packet {
+      r: 4;
+      opacity: 0;
+    }
+
+    /* ─── SIDE PANEL ──────────────────────────────────────────────────────────── */
+    #side-panel {
+      width: 340px;
       flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
 
-    .sidebar-placeholder {
+    #side-placeholder {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100%;
+      color: var(--muted);
+      gap: 0.75rem;
+      padding: 2rem;
       text-align: center;
+    }
+
+    #side-placeholder svg { opacity: 0.3; }
+
+    #side-content {
+      display: none;
+      padding: 1.5rem;
+      flex-direction: column;
       gap: 1rem;
+    }
+
+    #side-content.visible { display: flex; }
+
+    .side-type {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       color: var(--muted);
     }
 
-    .sidebar-placeholder .icon { font-size: 2.5rem; }
-    .sidebar-placeholder p { font-size: 0.88rem; line-height: 1.6; }
-
-    .sidebar-node { display: none; }
-    .sidebar-node.active { display: block; }
-
-    .sidebar-node h2 {
+    .side-title {
       font-size: 1.1rem;
       font-weight: 700;
-      margin-bottom: 0.25rem;
+      line-height: 1.3;
     }
 
-    .sidebar-node .layer-badge {
-      display: inline-block;
-      font-size: 0.72rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 0.15rem 0.55rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-
-    .sidebar-node p {
-      font-size: 0.875rem;
+    .side-desc {
       color: var(--muted);
-      line-height: 1.65;
-      margin-bottom: 1rem;
+      line-height: 1.6;
+      font-size: 0.88rem;
     }
 
-    .prop-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    .prop-table td {
-      padding: 0.4rem 0.5rem;
+    .props-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.4rem 1rem;
       font-size: 0.82rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
     }
-    .prop-table td:first-child { color: var(--muted); width: 38%; }
-    .prop-table td:last-child { font-family: 'SFMono-Regular', Consolas, monospace; color: var(--accent4); font-size: 0.8rem; }
+
+    .prop-key { color: var(--muted); white-space: nowrap; }
+    .prop-val { color: var(--text); word-break: break-word; }
 
     .code-block {
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 0.85rem 1rem;
-      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
       font-size: 0.78rem;
-      color: #cdd9e5;
-      overflow-x: auto;
-      line-height: 1.55;
-      margin-bottom: 1rem;
+      color: var(--accent2);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
     }
 
-    .code-block .kw { color: var(--accent3); }
-    .code-block .ann { color: var(--accent2); }
-    .code-block .str { color: #a5d6ff; }
-    .code-block .cm { color: var(--muted); font-style: italic; }
-
-    .sidebar-section-title {
+    .section-label {
       font-size: 0.72rem;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
+      letter-spacing: 0.08em;
       color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+
+    /* ─── JOURNEYS PANEL ──────────────────────────────────────────────────────── */
+    #journey-panel {
+      padding: 2rem;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    #journey-panel h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
       margin-bottom: 0.5rem;
     }
 
-    /* SVG node styles applied via JS */
-    .arch-node {
-      cursor: pointer;
-      transition: filter 0.15s;
-    }
-    .arch-node:hover { filter: brightness(1.25); }
-    .arch-node.selected rect, .arch-node.selected ellipse, .arch-node.selected polygon {
-      stroke: var(--accent) !important;
-      stroke-width: 2.5px !important;
-    }
-
-    /* animated packet */
-    @keyframes packetMove {
-      0%   { opacity: 0; }
-      10%  { opacity: 1; }
-      90%  { opacity: 1; }
-      100% { opacity: 0; }
-    }
-    .packet { animation: packetMove 2s ease-in-out infinite; }
-
-    /* ─── JOURNEYS PANEL ─── */
-    #panel-journeys {
-      flex-direction: column;
-      padding: 2rem;
-      max-width: 900px;
-      margin: 0 auto;
-      width: 100%;
-      overflow-y: auto;
-      height: calc(100vh - 52px);
-    }
-
-    #panel-journeys h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-    }
-
-    #panel-journeys > p {
+    #journey-panel .panel-sub {
       color: var(--muted);
-      font-size: 0.9rem;
       margin-bottom: 2rem;
-    }
-
-    .journey-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 1.5rem;
-      overflow: hidden;
-    }
-
-    .journey-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem 1.25rem;
-      cursor: pointer;
-      user-select: none;
-      background: var(--surface2);
-      transition: background 0.15s;
-    }
-    .journey-header:hover { background: var(--surface3); }
-
-    .journey-num {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #1f6feb, #388bfd);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.78rem; font-weight: 700; flex-shrink: 0;
-      color: #fff;
-    }
-
-    .journey-title { font-weight: 600; font-size: 0.95rem; }
-    .journey-subtitle { font-size: 0.8rem; color: var(--muted); margin-top: 0.1rem; }
-    .journey-chevron { margin-left: auto; font-size: 0.85rem; color: var(--muted); transition: transform 0.2s; }
-    .journey-card.open .journey-chevron { transform: rotate(90deg); }
-
-    .journey-body { display: none; padding: 1.25rem; }
-    .journey-card.open .journey-body { display: block; }
-
-    .step-list { list-style: none; }
-
-    .step-item {
-      display: flex;
-      gap: 1rem;
-      padding: 0.6rem 0;
-      border-bottom: 1px solid var(--border);
-      align-items: flex-start;
-    }
-    .step-item:last-child { border-bottom: none; }
-
-    .step-badge {
-      min-width: 26px; height: 26px;
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
-    }
-    .step-badge.ok   { background: rgba(63,185,80,0.18); color: var(--ok); }
-    .step-badge.warn { background: rgba(210,153,34,0.18); color: var(--warn); }
-    .step-badge.err  { background: rgba(248,81,73,0.18);  color: var(--error); }
-    .step-badge.comp { background: rgba(88,166,255,0.18); color: var(--info); }
-    .step-badge.skip { background: rgba(139,148,158,0.18); color: var(--muted); }
-    .step-badge.degrade { background: rgba(255,166,87,0.18); color: var(--accent4); }
-
-    .step-name { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.2rem; }
-    .step-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
-
-    /* ─── COMPONENTS PANEL ─── */
-    #panel-comps {
-      flex-direction: column;
-      padding: 2rem;
-      max-width: 1100px;
-      margin: 0 auto;
-      width: 100%;
-      overflow-y: auto;
-      height: calc(100vh - 52px);
-    }
-
-    #panel-comps h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-    }
-
-    #panel-comps > p {
-      color: var(--muted);
       font-size: 0.9rem;
-      margin-bottom: 2rem;
     }
 
-    .comp-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-      gap: 1rem;
-    }
-
-    .comp-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.1rem 1.25rem;
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.15s;
-    }
-    .comp-card:hover { border-color: var(--accent); }
-    .comp-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 3px; height: 100%;
-    }
-
-    .comp-card.layer-controller::before { background: var(--accent3); }
-    .comp-card.layer-service::before    { background: var(--accent); }
-    .comp-card.layer-external::before   { background: var(--accent2); }
-    .comp-card.layer-demo::before       { background: var(--accent5); }
-    .comp-card.layer-domain::before     { background: var(--accent4); }
-    .comp-card.layer-config::before     { background: var(--muted); }
-    .comp-card.layer-dto::before        { background: #a0a0a0; }
-
-    .comp-layer-tag {
-      font-size: 0.68rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 0.4rem;
-    }
-    .layer-controller .comp-layer-tag { color: var(--accent3); }
-    .layer-service .comp-layer-tag    { color: var(--accent); }
-    .layer-external .comp-layer-tag   { color: var(--accent2); }
-    .layer-demo .comp-layer-tag       { color: var(--accent5); }
-    .layer-domain .comp-layer-tag     { color: var(--accent4); }
-    .layer-config .comp-layer-tag     { color: var(--muted); }
-    .layer-dto .comp-layer-tag        { color: #a0a0a0; }
-
-    .comp-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
-    .comp-file { font-size: 0.75rem; color: var(--muted); font-family: monospace; margin-bottom: 0.6rem; }
-    .comp-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.55; }
-
-    .comp-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.7rem; }
-    .comp-tag {
-      font-size: 0.68rem;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--muted);
-    }
-
-    /* ─── TOPICS PANEL ─── */
-    #panel-topics {
-      flex-direction: column;
-      padding: 2rem;
-      max-width: 1100px;
-      margin: 0 auto;
-      width: 100%;
-      overflow-y: auto;
-      height: calc(100vh - 52px);
-    }
-
-    #panel-topics h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-    }
-
-    #panel-topics > p {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-bottom: 2rem;
-    }
-
-    .topic-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-      gap: 1rem;
-    }
-
-    .topic-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.1rem 1.25rem;
-      transition: border-color 0.15s;
-    }
-    .topic-card:hover { border-color: var(--accent2); }
-
-    .topic-category {
-      font-size: 0.68rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--accent2);
-      margin-bottom: 0.4rem;
-    }
-
-    .topic-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
-    .topic-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.55; margin-bottom: 0.7rem; }
-
-    .topic-meta {
+    .journey-selector {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
+      margin-bottom: 2rem;
     }
 
-    .topic-kv {
-      font-size: 0.75rem;
+    .journey-tab {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.45rem 1rem;
+      border-radius: 20px;
+      font-size: 0.83rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .journey-tab:hover { color: var(--text); border-color: var(--accent); }
+    .journey-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+    .journey-content { display: none; }
+    .journey-content.active { display: block; }
+
+    .journey-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .journey-header h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .journey-header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .steps-list { display: flex; flex-direction: column; gap: 0; }
+
+    .step-item {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 0 1rem;
+      position: relative;
+    }
+
+    .step-item:not(:last-child) .step-line {
+      position: absolute;
+      left: 19px;
+      top: 40px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .step-bubble {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+      z-index: 1;
+      position: relative;
+    }
+
+    .step-body {
+      padding-bottom: 1.75rem;
+    }
+
+    .step-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+      line-height: 1.3;
+    }
+
+    .step-desc {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    .step-comp {
+      margin-top: 0.5rem;
+      background: rgba(188,140,255,0.08);
+      border: 1px solid rgba(188,140,255,0.2);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      color: var(--comp);
+    }
+
+    .step-code {
+      margin-top: 0.5rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.76rem;
+      color: var(--accent2);
+      white-space: pre-wrap;
+    }
+
+    /* ─── COMPONENTS + TOPICS PANELS ─────────────────────────────────────────── */
+    #comp-panel, #topic-panel {
+      padding: 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    #comp-panel h2, #topic-panel h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .panel-sub {
+      color: var(--muted);
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .card:hover {
+      border-color: #444c56;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .card-title-group { flex: 1; min-width: 0; }
+    .card-title { font-weight: 700; font-size: 0.95rem; line-height: 1.3; }
+    .card-subtitle { color: var(--muted); font-size: 0.78rem; margin-top: 0.1rem; }
+
+    .card-desc {
+      color: var(--muted);
+      font-size: 0.83rem;
+      line-height: 1.6;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .tag {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 0.15rem 0.5rem;
+      padding: 0.18rem 0.5rem;
+      font-size: 0.72rem;
+      color: var(--muted);
     }
-    .topic-kv span { color: var(--muted); }
-    .topic-kv strong { color: var(--text); }
 
-    /* scrollbar */
+    .tag.blue   { border-color: rgba(88,166,255,0.3); color: var(--accent); }
+    .tag.green  { border-color: rgba(63,185,80,0.3);  color: var(--accent2); }
+    .tag.orange { border-color: rgba(210,153,34,0.3); color: var(--accent3); }
+    .tag.purple { border-color: rgba(188,140,255,0.3); color: var(--accent4); }
+    .tag.red    { border-color: rgba(248,81,73,0.3);  color: var(--accent5); }
+
+    .card-code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.74rem;
+      color: var(--accent2);
+      white-space: pre-wrap;
+    }
+
+    /* ─── FAULT BADGE ─────────────────────────────────────────────────────────── */
+    .fault-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.18rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(248,81,73,0.12);
+      border: 1px solid rgba(248,81,73,0.25);
+      color: var(--accent5);
+    }
+
+    .fault-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ─── HINT BOX ────────────────────────────────────────────────────────────── */
+    .hint-box {
+      background: rgba(88,166,255,0.07);
+      border: 1px solid rgba(88,166,255,0.2);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.85rem;
+      color: var(--accent);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ─── SCROLLBAR ───────────────────────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
   </style>
 </head>
 <body>
 
-<!-- ── TOP NAV ── -->
-<nav class="topnav">
-  <a href="index.html" class="topnav-logo">Fresh Groceries</a>
-  <div class="tabs" id="tab-bar">
-    <button class="tab active" data-panel="arch">Architecture</button>
-    <button class="tab" data-panel="journeys">Data Journeys</button>
-    <button class="tab" data-panel="comps">Components</button>
-    <button class="tab" data-panel="topics">Topics</button>
+<nav>
+  <a class="nav-brand" href="index.html">E-<span>Grocery</span> Demo</a>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('arch')">Architecture</button>
+    <button class="tab-btn" onclick="showTab('journeys')">Data Journeys</button>
+    <button class="tab-btn" onclick="showTab('comp')">Components</button>
+    <button class="tab-btn" onclick="showTab('topics')">Topics</button>
   </div>
-  <a href="index.html" class="back-link">&larr; Back to Overview</a>
+  <a class="nav-back" href="index.html">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.749.749 0 111.06 1.06L4.81 7h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"/>
+    </svg>
+    Back
+  </a>
 </nav>
 
-<!-- ══════════════════════════════════════════
-     PANEL 1 — ARCHITECTURE
-══════════════════════════════════════════ -->
-<section class="panel active" id="panel-arch">
-  <div class="arch-canvas">
-    <svg id="arch-svg" viewBox="0 0 920 640" xmlns="http://www.w3.org/2000/svg" style="width:100%; max-width:920px; height:640px;">
-      <defs>
-        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff" opacity="0.7"/>
-        </marker>
-        <marker id="arrowhead-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#3fb950" opacity="0.7"/>
-        </marker>
-        <marker id="arrowhead-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#ffa657" opacity="0.7"/>
-        </marker>
-        <marker id="arrowhead-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#ff7b72" opacity="0.7"/>
-        </marker>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
+<!-- ═══════════════════════════════ ARCHITECTURE TAB ════════════════════════════ -->
+<div id="arch-panel" class="panel active">
+  <div id="diagram-area">
+    <svg id="diagram-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <div id="side-panel">
+    <div id="side-placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <path d="M9 9h6M9 12h6M9 15h4"/>
+      </svg>
+      <div style="font-weight:600;color:#8b949e">Click any node</div>
+      <div style="font-size:0.82rem;color:#8b949e">to see details, properties, and code examples</div>
+    </div>
+    <div id="side-content">
+      <div id="sp-type" class="side-type"></div>
+      <div id="sp-title" class="side-title"></div>
+      <div id="sp-desc" class="side-desc"></div>
+      <div id="sp-props-wrap">
+        <div class="section-label">Properties</div>
+        <div id="sp-props" class="props-grid"></div>
+      </div>
+      <div id="sp-code-wrap">
+        <div class="section-label">Code / Notes</div>
+        <pre id="sp-code" class="code-block"></pre>
+      </div>
+    </div>
+  </div>
+</div>
 
-      <!-- ── Tier Labels ── -->
-      <text x="18" y="50" fill="#30363d" font-size="10" font-weight="600" font-family="monospace" letter-spacing="1">BROWSER</text>
-      <text x="18" y="150" fill="#30363d" font-size="10" font-weight="600" font-family="monospace" letter-spacing="1">CONTROLLER</text>
-      <text x="18" y="265" fill="#30363d" font-size="10" font-weight="600" font-family="monospace" letter-spacing="1">SERVICE</text>
-      <text x="18" y="375" fill="#30363d" font-size="10" font-weight="600" font-family="monospace" letter-spacing="1">EXTERNAL STUBS</text>
-      <text x="18" y="520" fill="#30363d" font-size="10" font-weight="600" font-family="monospace" letter-spacing="1">PERSISTENCE</text>
+<!-- ═══════════════════════════════ JOURNEYS TAB ════════════════════════════════ -->
+<div id="journey-panel" class="panel">
+  <h2>Data Journeys</h2>
+  <p class="panel-sub">Step-by-step walkthroughs of the major request flows through the system.</p>
 
-      <!-- ── Tier separator lines ── -->
-      <line x1="100" y1="82"  x2="910" y2="82"  stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
-      <line x1="100" y1="195" x2="910" y2="195" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
-      <line x1="100" y1="310" x2="910" y2="310" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
-      <line x1="100" y1="455" x2="910" y2="455" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
-
-      <!-- ────────────────── EDGES ────────────────── -->
-
-      <!-- Browser -> ProductController -->
-      <line x1="220" y1="70" x2="220" y2="120" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowhead)"/>
-      <!-- Browser -> CartController -->
-      <line x1="390" y1="70" x2="390" y2="120" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowhead)"/>
-      <!-- Browser -> CheckoutController -->
-      <line x1="560" y1="70" x2="560" y2="120" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowhead)"/>
-      <!-- Browser -> DemoController -->
-      <line x1="740" y1="70" x2="740" y2="120" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowhead)"/>
-
-      <!-- ProductController -> ProductService -->
-      <line x1="220" y1="160" x2="220" y2="230" stroke="#d2a8ff" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowhead)"/>
-      <!-- CartController -> CheckoutService (dashed) -->
-      <line x1="390" y1="160" x2="460" y2="230" stroke="#d2a8ff" stroke-width="1.5" opacity="0.5" stroke-dasharray="5,3" marker-end="url(#arrowhead)"/>
-      <!-- CheckoutController -> CheckoutService -->
-      <line x1="560" y1="160" x2="490" y2="230" stroke="#d2a8ff" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowhead)"/>
-      <!-- DemoController -> DemoFaultConfig -->
-      <line x1="740" y1="160" x2="840" y2="230" stroke="#ff7b72" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowhead-red)"/>
-
-      <!-- CheckoutService -> InventoryService -->
-      <line x1="455" y1="278" x2="310" y2="350" stroke="#3fb950" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowhead-green)"/>
-      <!-- CheckoutService -> PaymentService -->
-      <line x1="480" y1="280" x2="480" y2="350" stroke="#3fb950" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowhead-green)"/>
-      <!-- CheckoutService -> PromotionService -->
-      <line x1="505" y1="278" x2="640" y2="350" stroke="#3fb950" stroke-width="1.5" opacity="0.6" marker-end="url(#arrowhead-green)"/>
-      <!-- CartController -> CartPromotionService -->
-      <line x1="355" y1="160" x2="220" y2="350" stroke="#ffa657" stroke-width="1.5" opacity="0.4" stroke-dasharray="5,3" marker-end="url(#arrowhead-orange)"/>
-      <!-- CartController -> CouponService -->
-      <line x1="360" y1="162" x2="790" y2="350" stroke="#ffa657" stroke-width="1.5" opacity="0.4" stroke-dasharray="5,3" marker-end="url(#arrowhead-orange)"/>
-
-      <!-- CheckoutService -> OrderService -->
-      <line x1="468" y1="280" x2="340" y2="350" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" stroke-dasharray="4,3" marker-end="url(#arrowhead)"/>
-
-      <!-- InventoryService -> H2 (display) -->
-      <line x1="310" y1="400" x2="340" y2="490" stroke="#3fb950" stroke-width="1.2" opacity="0.4" stroke-dasharray="3,4" marker-end="url(#arrowhead-green)"/>
-      <!-- OrderService -> H2 -->
-      <line x1="350" y1="395" x2="380" y2="490" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowhead)"/>
-      <!-- ProductService -> H2 -->
-      <line x1="220" y1="260" x2="300" y2="490" stroke="#58a6ff" stroke-width="1.2" opacity="0.4" stroke-dasharray="4,3" marker-end="url(#arrowhead)"/>
-
-      <!-- DemoFaultConfig -> stubs (influence lines) -->
-      <line x1="810" y1="268" x2="760" y2="350" stroke="#ff7b72" stroke-width="1" opacity="0.35" stroke-dasharray="3,4" marker-end="url(#arrowhead-red)"/>
-      <line x1="820" y1="268" x2="520" y2="350" stroke="#ff7b72" stroke-width="1" opacity="0.35" stroke-dasharray="3,4" marker-end="url(#arrowhead-red)"/>
-      <line x1="825" y1="268" x2="330" y2="350" stroke="#ff7b72" stroke-width="1" opacity="0.3" stroke-dasharray="3,4" marker-end="url(#arrowhead-red)"/>
-
-      <!-- ────────────────── NODES ────────────────── -->
-
-      <!-- BROWSER TIER -->
-      <g class="arch-node" id="node-browser" data-node="browser">
-        <rect x="150" y="30" width="140" height="38" rx="8" fill="#1c2330" stroke="#30363d" stroke-width="1.5"/>
-        <text x="220" y="53" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Browser / Thymeleaf</text>
-      </g>
-      <g class="arch-node" id="node-browser2" data-node="browser">
-        <rect x="310" y="30" width="160" height="38" rx="8" fill="#1c2330" stroke="#30363d" stroke-width="1.5"/>
-        <text x="390" y="53" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Cart UI Session</text>
-      </g>
-      <g class="arch-node" id="node-browser3" data-node="browser">
-        <rect x="480" y="30" width="160" height="38" rx="8" fill="#1c2330" stroke="#30363d" stroke-width="1.5"/>
-        <text x="560" y="53" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Checkout Form</text>
-      </g>
-      <g class="arch-node" id="node-browser4" data-node="democontroller">
-        <rect x="660" y="30" width="160" height="38" rx="8" fill="#1c2330" stroke="#30363d" stroke-width="1.5"/>
-        <text x="740" y="53" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="600">Demo Panel /demo</text>
-      </g>
-
-      <!-- CONTROLLER TIER -->
-      <g class="arch-node" id="node-productctrl" data-node="productctrl">
-        <rect x="140" y="120" width="160" height="42" rx="8" fill="#21262d" stroke="#d2a8ff" stroke-width="1.5"/>
-        <text x="220" y="145" text-anchor="middle" fill="#d2a8ff" font-size="11.5" font-weight="600">ProductController</text>
-        <text x="220" y="158" text-anchor="middle" fill="#8b949e" font-size="9">GET / — catalogue</text>
-      </g>
-      <g class="arch-node" id="node-cartctrl" data-node="cartctrl">
-        <rect x="310" y="120" width="160" height="42" rx="8" fill="#21262d" stroke="#d2a8ff" stroke-width="1.5"/>
-        <text x="390" y="145" text-anchor="middle" fill="#d2a8ff" font-size="11.5" font-weight="600">CartController</text>
-        <text x="390" y="158" text-anchor="middle" fill="#8b949e" font-size="9">GET/POST /cart</text>
-      </g>
-      <g class="arch-node" id="node-checkoutctrl" data-node="checkoutctrl">
-        <rect x="480" y="120" width="160" height="42" rx="8" fill="#21262d" stroke="#d2a8ff" stroke-width="1.5"/>
-        <text x="560" y="145" text-anchor="middle" fill="#d2a8ff" font-size="11.5" font-weight="600">CheckoutController</text>
-        <text x="560" y="158" text-anchor="middle" fill="#8b949e" font-size="9">POST /checkout</text>
-      </g>
-      <g class="arch-node" id="node-democontroller" data-node="democontroller">
-        <rect x="660" y="120" width="160" height="42" rx="8" fill="#21262d" stroke="#ff7b72" stroke-width="1.5"/>
-        <text x="740" y="145" text-anchor="middle" fill="#ff7b72" font-size="11.5" font-weight="600">DemoController</text>
-        <text x="740" y="158" text-anchor="middle" fill="#8b949e" font-size="9">GET/POST /demo</text>
-      </g>
-
-      <!-- SERVICE TIER -->
-      <g class="arch-node" id="node-productservice" data-node="productservice">
-        <rect x="140" y="230" width="150" height="40" rx="8" fill="#21262d" stroke="#58a6ff" stroke-width="1.5"/>
-        <text x="215" y="253" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">ProductService</text>
-        <text x="215" y="265" text-anchor="middle" fill="#8b949e" font-size="9">read-only queries</text>
-      </g>
-      <g class="arch-node" id="node-orderservice" data-node="orderservice">
-        <rect x="300" y="230" width="140" height="40" rx="8" fill="#21262d" stroke="#58a6ff" stroke-width="1.5"/>
-        <text x="370" y="253" text-anchor="middle" fill="#58a6ff" font-size="11" font-weight="600">OrderService</text>
-        <text x="370" y="265" text-anchor="middle" fill="#8b949e" font-size="9">@Transactional writes</text>
-      </g>
-      <g class="arch-node" id="node-checkoutservice" data-node="checkoutservice">
-        <rect x="410" y="225" width="165" height="50" rx="8" fill="#1f2e1f" stroke="#3fb950" stroke-width="2"/>
-        <text x="493" y="252" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">CheckoutService</text>
-        <text x="493" y="267" text-anchor="middle" fill="#8b949e" font-size="9">Saga orchestrator</text>
-      </g>
-      <g class="arch-node" id="node-demofaultconfig" data-node="demofaultconfig">
-        <rect x="780" y="230" width="120" height="40" rx="8" fill="#2d1f1f" stroke="#ff7b72" stroke-width="1.5"/>
-        <text x="840" y="253" text-anchor="middle" fill="#ff7b72" font-size="11" font-weight="600">DemoFaultConfig</text>
-        <text x="840" y="265" text-anchor="middle" fill="#8b949e" font-size="9">fault mode singleton</text>
-      </g>
-
-      <!-- EXTERNAL STUBS TIER -->
-      <g class="arch-node" id="node-inventory" data-node="inventory">
-        <rect x="200" y="350" width="150" height="48" rx="8" fill="#1a2a1a" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="275" y="370" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">StubInventoryService</text>
-        <text x="275" y="383" text-anchor="middle" fill="#8b949e" font-size="8.5">ConcurrentHashMap</text>
-        <text x="275" y="393" text-anchor="middle" fill="#8b949e" font-size="8.5">reserve / commit / release</text>
-      </g>
-      <g class="arch-node" id="node-payment" data-node="payment">
-        <rect x="370" y="350" width="150" height="48" rx="8" fill="#1a2a1a" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="445" y="370" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">StubPaymentService</text>
-        <text x="445" y="383" text-anchor="middle" fill="#8b949e" font-size="8.5">idempotency key cache</text>
-        <text x="445" y="393" text-anchor="middle" fill="#8b949e" font-size="8.5">dedicated thread pool</text>
-      </g>
-      <g class="arch-node" id="node-promotion" data-node="promotion">
-        <rect x="540" y="350" width="150" height="48" rx="8" fill="#1a2a1a" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="615" y="370" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">StubPromotionService</text>
-        <text x="615" y="383" text-anchor="middle" fill="#8b949e" font-size="8.5">promo codes</text>
-        <text x="615" y="393" text-anchor="middle" fill="#8b949e" font-size="8.5">graceful degradation</text>
-      </g>
-      <g class="arch-node" id="node-cartpromotion" data-node="cartpromotion">
-        <rect x="100" y="350" width="98" height="48" rx="8" fill="#282018" stroke="#ffa657" stroke-width="1.5"/>
-        <text x="149" y="368" text-anchor="middle" fill="#ffa657" font-size="9.5" font-weight="600">CartPromotion</text>
-        <text x="149" y="381" text-anchor="middle" fill="#ffa657" font-size="9.5" font-weight="600">Service</text>
-        <text x="149" y="393" text-anchor="middle" fill="#8b949e" font-size="8">qty-based deals</text>
-      </g>
-      <g class="arch-node" id="node-coupon" data-node="coupon">
-        <rect x="705" y="350" width="110" height="48" rx="8" fill="#282018" stroke="#ffa657" stroke-width="1.5"/>
-        <text x="760" y="370" text-anchor="middle" fill="#ffa657" font-size="10" font-weight="600">StubCouponService</text>
-        <text x="760" y="383" text-anchor="middle" fill="#8b949e" font-size="8">coupon offers</text>
-        <text x="760" y="393" text-anchor="middle" fill="#8b949e" font-size="8">fault injectable</text>
-      </g>
-
-      <!-- PERSISTENCE TIER -->
-      <g class="arch-node" id="node-h2" data-node="h2">
-        <ellipse cx="370" cy="510" rx="90" ry="30" fill="#1c1e28" stroke="#79c0ff" stroke-width="1.5"/>
-        <text x="370" y="506" text-anchor="middle" fill="#79c0ff" font-size="11" font-weight="600">H2 In-Memory DB</text>
-        <text x="370" y="520" text-anchor="middle" fill="#8b949e" font-size="9">grocerydb</text>
-      </g>
-      <g class="arch-node" id="node-inmemory" data-node="inmemory">
-        <ellipse cx="600" cy="510" rx="95" ry="30" fill="#1a2a1a" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="600" y="506" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="600">In-Memory Stock</text>
-        <text x="600" y="520" text-anchor="middle" fill="#8b949e" font-size="9">ConcurrentHashMap (authoritative)</text>
-      </g>
-      <g class="arch-node" id="node-session" data-node="session">
-        <ellipse cx="175" cy="510" rx="75" ry="28" fill="#1e2028" stroke="#d2a8ff" stroke-width="1.5"/>
-        <text x="175" y="506" text-anchor="middle" fill="#d2a8ff" font-size="10.5" font-weight="600">HTTP Session</text>
-        <text x="175" y="520" text-anchor="middle" fill="#8b949e" font-size="8.5">@SessionScope Cart</text>
-      </g>
-
-      <!-- Inventory -> in-memory -->
-      <line x1="300" y1="400" x2="510" y2="488" stroke="#3fb950" stroke-width="1.2" opacity="0.4" stroke-dasharray="4,3" marker-end="url(#arrowhead-green)"/>
-      <!-- CartController -> session -->
-      <line x1="360" y1="162" x2="200" y2="488" stroke="#d2a8ff" stroke-width="1" opacity="0.3" stroke-dasharray="3,4" marker-end="url(#arrowhead)"/>
-
-      <!-- ── Animated data packets ── -->
-      <!-- packet: checkout controller -> checkout service -->
-      <circle r="5" fill="#3fb950" opacity="0" filter="url(#glow)">
-        <animateMotion dur="2.5s" repeatCount="indefinite" begin="0s">
-          <mpath href="#edge-checkout-saga"/>
-        </animateMotion>
-        <animate attributeName="opacity" values="0;1;1;0" dur="2.5s" repeatCount="indefinite" begin="0s"/>
-      </circle>
-
-      <!-- packet: saga -> payment -->
-      <circle r="4" fill="#ffa657" opacity="0" filter="url(#glow)">
-        <animateMotion dur="2s" repeatCount="indefinite" begin="0.8s">
-          <mpath href="#edge-saga-payment"/>
-        </animateMotion>
-        <animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" begin="0.8s"/>
-      </circle>
-
-      <!-- packet: saga -> inventory -->
-      <circle r="4" fill="#58a6ff" opacity="0" filter="url(#glow)">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.4s">
-          <mpath href="#edge-saga-inventory"/>
-        </animateMotion>
-        <animate attributeName="opacity" values="0;1;1;0" dur="2.2s" repeatCount="indefinite" begin="0.4s"/>
-      </circle>
-
-      <!-- Hidden paths for packet animation -->
-      <path id="edge-checkout-saga" d="M 560 162 L 493 225" fill="none" stroke="none"/>
-      <path id="edge-saga-payment"  d="M 480 278 L 445 350" fill="none" stroke="none"/>
-      <path id="edge-saga-inventory" d="M 455 278 L 310 350" fill="none" stroke="none"/>
-
-      <!-- Legend -->
-      <g transform="translate(820, 480)">
-        <rect x="-5" y="-5" width="92" height="95" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
-        <text x="0" y="8" fill="#8b949e" font-size="8.5" font-weight="600">LEGEND</text>
-        <line x1="0" y1="16" x2="16" y2="16" stroke="#58a6ff" stroke-width="1.5"/>
-        <text x="20" y="19" fill="#8b949e" font-size="8">HTTP / MVC</text>
-        <line x1="0" y1="30" x2="16" y2="30" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="20" y="33" fill="#8b949e" font-size="8">Service call</text>
-        <line x1="0" y1="44" x2="16" y2="44" stroke="#ffa657" stroke-width="1.5" stroke-dasharray="3,2"/>
-        <text x="20" y="47" fill="#8b949e" font-size="8">Cart / Coupon</text>
-        <line x1="0" y1="58" x2="16" y2="58" stroke="#ff7b72" stroke-width="1.5" stroke-dasharray="3,2"/>
-        <text x="20" y="61" fill="#8b949e" font-size="8">Fault config</text>
-        <circle cx="8" cy="72" r="4" fill="#3fb950" opacity="0.9"/>
-        <text x="20" y="75" fill="#8b949e" font-size="8">Data packet</text>
-      </g>
-    </svg>
+  <div class="hint-box">
+    The most important journey is the Checkout Saga — it demonstrates all six steps and the compensating transactions that fire when any step fails. Explore the other journeys to understand how the cart, discounts, and chaos panel interact.
   </div>
 
-  <aside class="arch-sidebar" id="arch-sidebar">
-    <div class="sidebar-placeholder" id="sidebar-placeholder">
-      <div class="icon">&#9741;</div>
-      <p>Click any component on the diagram to see its description, properties, and code examples.</p>
-    </div>
+  <div class="journey-selector" id="journey-selector"></div>
+  <div id="journey-bodies"></div>
+</div>
 
-    <!-- NODE DETAILS -->
-    <div class="sidebar-node" id="sn-browser">
-      <h2>Browser / Thymeleaf UI</h2>
-      <span class="layer-badge" style="background:rgba(30,32,40,1);color:#8b949e;border:1px solid #30363d;">Presentation Tier</span>
-      <p>Server-side rendered HTML pages generated by Thymeleaf templates. All state transitions are full-page HTTP form submissions — no JavaScript SPA framework is involved. The cart session is maintained on the server; templates receive model attributes injected by controllers and CartModelAdvice.</p>
-      <div class="sidebar-section-title">Key Templates</div>
-      <table class="prop-table">
-        <tr><td>index.html</td><td>Product catalogue / homepage</td></tr>
-        <tr><td>cart.html</td><td>Shopping cart with deals panel</td></tr>
-        <tr><td>checkout.html</td><td>Checkout form + saga trace</td></tr>
-        <tr><td>confirmation.html</td><td>Order success page</td></tr>
-        <tr><td>demo.html</td><td>Chaos engineering panel</td></tr>
-      </table>
-      <div class="sidebar-section-title">Global Model Attributes (CartModelAdvice)</div>
-      <div class="code-block"><span class="ann">@ControllerAdvice</span><br><span class="kw">class</span> CartModelAdvice {<br>  <span class="cm">// injects into EVERY template:</span><br>  cartItemCount  <span class="cm">// nav badge</span><br>  categories     <span class="cm">// nav dropdown</span><br>}</div>
-    </div>
+<!-- ═══════════════════════════════ COMPONENTS TAB ══════════════════════════════ -->
+<div id="comp-panel" class="panel">
+  <h2>Components</h2>
+  <p class="panel-sub">Every service, controller, stub, and infrastructure piece in the application.</p>
+  <div class="card-grid" id="comp-grid"></div>
+</div>
 
-    <div class="sidebar-node" id="sn-productctrl">
-      <h2>ProductController</h2>
-      <span class="layer-badge" style="background:rgba(210,168,255,0.1);color:#d2a8ff;border:1px solid rgba(210,168,255,0.3);">Controller</span>
-      <p>Renders the product catalogue homepage and individual product detail pages. Delegates all data fetching to ProductService. Catches no domain exceptions — all products are read-only at this layer.</p>
-      <table class="prop-table">
-        <tr><td>Route</td><td>GET /</td></tr>
-        <tr><td>Template</td><td>index.html</td></tr>
-        <tr><td>Dependencies</td><td>ProductService</td></tr>
-      </table>
-      <div class="sidebar-section-title">Key Mapping</div>
-      <div class="code-block"><span class="ann">@GetMapping</span>(<span class="str">"/"</span>)<br><span class="kw">public</span> String index(<br>  @RequestParam Optional&lt;Long&gt; category,<br>  Model model) {<br>  <span class="cm">// lists products, optionally filtered</span><br>  <span class="kw">return</span> <span class="str">"index"</span>;<br>}</div>
-    </div>
-
-    <div class="sidebar-node" id="sn-cartctrl">
-      <h2>CartController</h2>
-      <span class="layer-badge" style="background:rgba(210,168,255,0.1);color:#d2a8ff;border:1px solid rgba(210,168,255,0.3);">Controller</span>
-      <p>Handles all cart mutations: add, update quantity, remove, and clear. After every mutation it calls refreshDiscounts() which re-evaluates both CartPromotionService (quantity deals) and CouponService (coupon offers). The coupon engine is gracefully degraded — failures clear coupon discounts without aborting the operation.</p>
-      <table class="prop-table">
-        <tr><td>Routes</td><td>GET/POST /cart, /cart/add, /cart/update, /cart/remove, /cart/clear</td></tr>
-        <tr><td>Session bean</td><td>Cart (@SessionScope)</td></tr>
-        <tr><td>Fault-tolerant</td><td>CouponService (graceful degrade)</td></tr>
-      </table>
-      <div class="sidebar-section-title">Discount Refresh</div>
-      <div class="code-block"><span class="kw">private void</span> refreshDiscounts() {<br>  cart.applyCartPromotion(<br>    cartPromotionService.evaluate(items));<br>  <span class="kw">try</span> {<br>    cart.applyCoupons(couponService.evaluate(items));<br>  } <span class="kw">catch</span> (ServiceUnavailableException e) {<br>    cart.applyCoupons(CouponResult.none());<br>    cart.setCouponServiceDown(<span class="kw">true</span>);<br>  }<br>}</div>
-    </div>
-
-    <div class="sidebar-node" id="sn-checkoutctrl">
-      <h2>CheckoutController</h2>
-      <span class="layer-badge" style="background:rgba(210,168,255,0.1);color:#d2a8ff;border:1px solid rgba(210,168,255,0.3);">Controller</span>
-      <p>Invokes the checkout saga and maps each typed exception to a specific UI message. A fresh UUID idempotency key is embedded in the checkout form on every GET. The SagaTrace object is passed through the saga and attached to the model on any failure so the template renders a colour-coded execution log.</p>
-      <table class="prop-table">
-        <tr><td>GET /checkout</td><td>Renders form with fresh idempotencyKey</td></tr>
-        <tr><td>POST /checkout</td><td>Runs saga; maps exceptions to UI</td></tr>
-        <tr><td>GET /checkout/confirmation/{id}</td><td>Order success page</td></tr>
-      </table>
-      <div class="sidebar-section-title">Exception Map</div>
-      <table class="prop-table">
-        <tr><td>InsufficientStockException</td><td>Items no longer available</td></tr>
-        <tr><td>InvalidPromotionException</td><td>Inline promo code error</td></tr>
-        <tr><td>PaymentFailedException</td><td>Decline message + rollback note</td></tr>
-        <tr><td>ServiceUnavailableException</td><td>Service down + compensation note</td></tr>
-        <tr><td>CheckoutException</td><td>Full rollback applied message</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-democontroller">
-      <h2>DemoController</h2>
-      <span class="layer-badge" style="background:rgba(255,123,114,0.1);color:#ff7b72;border:1px solid rgba(255,123,114,0.3);">Controller — Chaos</span>
-      <p>Reads and writes DemoFaultConfig to toggle fault injection on each external service. Handles one-click scenario presets (e.g. payment-down, inventory-reserve-flaky) that set multiple fault settings atomically. Changes take effect on the very next checkout attempt with no restart required.</p>
-      <table class="prop-table">
-        <tr><td>Route</td><td>GET/POST /demo</td></tr>
-        <tr><td>Bean</td><td>DemoFaultConfig (singleton)</td></tr>
-        <tr><td>Presets</td><td>25+ one-click scenarios</td></tr>
-      </table>
-      <div class="sidebar-section-title">Sample Presets</div>
-      <table class="prop-table">
-        <tr><td>payment-down</td><td>Steps 1-3 OK; Step 4 fails</td></tr>
-        <tr><td>payment-timeout</td><td>5s delay vs 3s deadline</td></tr>
-        <tr><td>inventory-reserve-slow</td><td>Blocks servlet thread 5s</td></tr>
-        <tr><td>inventory-commit-down</td><td>Full rollback: refund + cancel</td></tr>
-        <tr><td>promotion-down-graceful</td><td>Proceeds with $0 discount</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-productservice">
-      <h2>ProductService</h2>
-      <span class="layer-badge" style="background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.3);">Service</span>
-      <p>Thin read-only service wrapping ProductRepository. Provides product listing (optionally filtered by category) and single-product lookup. Carries no transactional write logic — order writes go through OrderService.</p>
-      <table class="prop-table">
-        <tr><td>Operations</td><td>findAll, findByCategory, findById</td></tr>
-        <tr><td>Repository</td><td>ProductRepository (Spring Data JPA)</td></tr>
-        <tr><td>Writes</td><td>None — read-only service</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-orderservice">
-      <h2>OrderService</h2>
-      <span class="layer-badge" style="background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.3);">Service</span>
-      <p>Owns all @Transactional DB writes related to orders: createOrder (persists Order + OrderItems, decrements Product.stockQuantity) and cancelOrder (sets status to CANCELLED). CheckoutService calls this after a successful payment but before committing the inventory reservation.</p>
-      <table class="prop-table">
-        <tr><td>createOrder</td><td>@Transactional — writes Order + OrderItems</td></tr>
-        <tr><td>cancelOrder</td><td>@Transactional — sets CANCELLED status</td></tr>
-        <tr><td>decrementStock</td><td>ProductRepository.decrementStock() custom query</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-checkoutservice">
-      <h2>CheckoutService</h2>
-      <span class="layer-badge" style="background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.4);">Service — Saga Orchestrator</span>
-      <p>The most important class. Coordinates a 6-step saga across InventoryService, PromotionService, PaymentService, and OrderService. NOT @Transactional — the saga spans external calls that cannot be wrapped in a single DB transaction. Each step either succeeds and advances the saga, or triggers explicit compensating actions to undo already-committed side effects.</p>
-      <div class="sidebar-section-title">Saga Steps</div>
-      <table class="prop-table">
-        <tr><td>Step 1</td><td>checkAvailability — read-only, no side effects</td></tr>
-        <tr><td>Step 2</td><td>applyPromotion — read-only, graceful degrade OK</td></tr>
-        <tr><td>Step 3</td><td>reserveStock — SIDE EFFECT: reduces stock</td></tr>
-        <tr><td>Step 4</td><td>processPayment — SIDE EFFECT: charges card (dedicated thread)</td></tr>
-        <tr><td>Step 5</td><td>createOrder — DB write (@Transactional)</td></tr>
-        <tr><td>Step 6</td><td>commitReservation — makes hold permanent</td></tr>
-      </table>
-      <div class="sidebar-section-title">Payment Thread</div>
-      <div class="code-block"><span class="cm">// Payment runs on dedicated daemon thread</span><br>Future&lt;PaymentResult&gt; f = paymentExecutor.submit(<br>  () -> paymentService.processPayment(req));<br><span class="kw">try</span> {<br>  payment = f.get(timeoutMs, MILLISECONDS);<br>} <span class="kw">catch</span> (TimeoutException e) {<br>  f.cancel(<span class="kw">true</span>);<br>  inventoryService.releaseReservation(r);<br>  <span class="kw">throw</span> <span class="kw">new</span> ServiceUnavailableException(...);<br>}</div>
-    </div>
-
-    <div class="sidebar-node" id="sn-demofaultconfig">
-      <h2>DemoFaultConfig</h2>
-      <span class="layer-badge" style="background:rgba(255,123,114,0.1);color:#ff7b72;border:1px solid rgba(255,123,114,0.3);">Demo — Singleton</span>
-      <p>Singleton @Component holding volatile fault settings for every stub service. Volatile fields ensure visibility across threads. FaultInjector.apply() reads from this bean on every stub invocation and either throws ServiceUnavailableException (DOWN/FLAKY) or sleeps (SLOW) before returning control.</p>
-      <div class="sidebar-section-title">Fault Settings</div>
-      <table class="prop-table">
-        <tr><td>inventoryCheckMode</td><td>NORMAL | DOWN | SLOW | FLAKY</td></tr>
-        <tr><td>inventoryReserveMode</td><td>NORMAL | DOWN | SLOW | FLAKY</td></tr>
-        <tr><td>inventoryCommitMode</td><td>NORMAL | DOWN | SLOW | FLAKY</td></tr>
-        <tr><td>paymentMode</td><td>NORMAL | DOWN | SLOW | FLAKY</td></tr>
-        <tr><td>promotionMode</td><td>NORMAL | DOWN | SLOW | FLAKY</td></tr>
-        <tr><td>couponMode</td><td>NORMAL | DOWN | SLOW | FLAKY</td></tr>
-        <tr><td>paymentTimeoutMs</td><td>3000ms (default)</td></tr>
-        <tr><td>slowDelayMs</td><td>5000ms (default)</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-inventory">
-      <h2>StubInventoryService</h2>
-      <span class="layer-badge" style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.3);">External Stub — Inventory</span>
-      <p>Simulates an external warehouse inventory system using two ConcurrentHashMaps: one for available stock, one for active reservations. Implements a two-phase reserve/commit protocol to prevent overselling under concurrent sessions. releaseReservation intentionally has no fault injection — compensating transactions must always succeed.</p>
-      <table class="prop-table">
-        <tr><td>checkAvailability</td><td>Read-only. Fault: CHECK mode</td></tr>
-        <tr><td>reserveStock</td><td>Deducts available. Fault: RESERVE mode</td></tr>
-        <tr><td>commitReservation</td><td>Removes hold. Fault: COMMIT mode</td></tr>
-        <tr><td>releaseReservation</td><td>Returns stock. NO fault injection</td></tr>
-      </table>
-      <div class="sidebar-section-title">Data Structure</div>
-      <div class="code-block">ConcurrentHashMap&lt;Long, Integer&gt; available;<br><span class="cm">// productId -> units not yet reserved</span><br><br>ConcurrentHashMap&lt;String, Map&lt;Long,Integer&gt;&gt; reservations;<br><span class="cm">// reservationId -> {productId -> qty}</span></div>
-    </div>
-
-    <div class="sidebar-node" id="sn-payment">
-      <h2>StubPaymentService</h2>
-      <span class="layer-badge" style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.3);">External Stub — Payment</span>
-      <p>Simulates a payment gateway with idempotency key deduplication. A UUID generated once per form load is embedded as a hidden field; the stub caches results by this key so network retries or double-submits replay the original result rather than double-charging. Runs on a dedicated daemon thread pool to enable timeout enforcement.</p>
-      <table class="prop-table">
-        <tr><td>4111 1111 1111 1111</td><td>Success</td></tr>
-        <tr><td>4000 0000 0000 0002</td><td>Declined</td></tr>
-        <tr><td>4000 0000 0000 9995</td><td>Insufficient funds</td></tr>
-        <tr><td>4000 0000 0000 0127</td><td>Incorrect CVC</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-promotion">
-      <h2>StubPromotionService</h2>
-      <span class="layer-badge" style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.3);">External Stub — Promo Codes</span>
-      <p>Validates and applies promo codes submitted at checkout. Invalid codes throw InvalidPromotionException. Supports graceful degradation: if unavailable and the degradation toggle is ON, CheckoutService logs DEGRADED and proceeds with zero promo discount. If the toggle is OFF, the unavailability aborts checkout.</p>
-      <table class="prop-table">
-        <tr><td>SAVE10</td><td>10% off</td></tr>
-        <tr><td>SAVE20</td><td>20% off</td></tr>
-        <tr><td>FLAT5</td><td>$5.00 off</td></tr>
-        <tr><td>WELCOME</td><td>15% off</td></tr>
-        <tr><td>FRESH</td><td>$4.00 off</td></tr>
-        <tr><td>BIG25</td><td>25% off</td></tr>
-        <tr><td>HALFOFF</td><td>50% off</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-cartpromotion">
-      <h2>StubCartPromotionService</h2>
-      <span class="layer-badge" style="background:rgba(255,166,87,0.1);color:#ffa657;border:1px solid rgba(255,166,87,0.3);">External Stub — Cart Deals</span>
-      <p>Evaluates automatic quantity-based deals on every cart mutation. No promo code required — deals apply automatically when trigger quantities are met. Never fault-injected (always returns a result). Discounts are applied before promo codes in the checkout total calculation.</p>
-      <table class="prop-table">
-        <tr><td>Whole Milk (1 gal)</td><td>qty &ge; 3: Buy 2 Get 1 Free</td></tr>
-        <tr><td>Organic Apples (1 lb)</td><td>qty &ge; 4: Save $2.00</td></tr>
-        <tr><td>Bananas (bunch)</td><td>qty &ge; 3: Save $1.00</td></tr>
-        <tr><td>Cheddar Cheese (8 oz)</td><td>qty &ge; 2: Save $1.50</td></tr>
-        <tr><td>Sparkling Water (12-pack)</td><td>qty &ge; 2: Save $2.00</td></tr>
-        <tr><td>Orange Juice (52 oz)</td><td>qty &ge; 3: Save $2.00</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-coupon">
-      <h2>StubCouponService</h2>
-      <span class="layer-badge" style="background:rgba(255,166,87,0.1);color:#ffa657;border:1px solid rgba(255,166,87,0.3);">External Stub — Coupons</span>
-      <p>Evaluates automatic coupon offers (BOGO, bundle, multi-buy, spend-threshold) against cart contents. Unlike cart promotions, this service IS fault-injectable. getOfferCatalog() is never faulted so the UI can always show which offers exist even when the engine is DOWN. CartController gracefully degrades on failure.</p>
-      <table class="prop-table">
-        <tr><td>BOGO Croissants</td><td>qty &ge; 2: every 2nd free</td></tr>
-        <tr><td>Bundle Spinach+Yogurt</td><td>both in cart: $1.50 off</td></tr>
-        <tr><td>Multi Blueberry Muffins</td><td>qty &ge; 2: $2.00 off</td></tr>
-        <tr><td>Multi Cold Brew</td><td>qty &ge; 2: $3.00 off</td></tr>
-        <tr><td>Spend Threshold</td><td>cart &ge; $20: $3.00 off</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-h2">
-      <h2>H2 In-Memory Database</h2>
-      <span class="layer-badge" style="background:rgba(121,192,255,0.1);color:#79c0ff;border:1px solid rgba(121,192,255,0.3);">Persistence</span>
-      <p>Embedded H2 database holding the persistent domain model: Categories, Products (including the cached stockQuantity display value), Orders, and OrderItems. Seeded by DataInitializer on every startup with 16 products across 4 categories. Accessible via web console at /h2-console during development.</p>
-      <table class="prop-table">
-        <tr><td>JDBC URL</td><td>jdbc:h2:mem:grocerydb</td></tr>
-        <tr><td>Username</td><td>sa (no password)</td></tr>
-        <tr><td>Console</td><td>http://localhost:8080/h2-console</td></tr>
-        <tr><td>Tables</td><td>category, product, order, order_item</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-inmemory">
-      <h2>In-Memory Stock (ConcurrentHashMap)</h2>
-      <span class="layer-badge" style="background:rgba(63,185,80,0.1);color:#3fb950;border:1px solid rgba(63,185,80,0.3);">Persistence — In-Memory</span>
-      <p>The authoritative source of truth for stock availability during checkout. Held in StubInventoryService as a ConcurrentHashMap. Seeded from the H2 DB by DataInitializer on startup. Reserve/release operations happen here in real-time, enabling the two-phase reserve/commit flow that prevents overselling under concurrent sessions.</p>
-      <table class="prop-table">
-        <tr><td>Authority</td><td>Checkout availability checks</td></tr>
-        <tr><td>Synced with H2</td><td>On startup; after confirmed orders</td></tr>
-        <tr><td>Thread-safe</td><td>ConcurrentHashMap + merge()</td></tr>
-        <tr><td>Lifetime</td><td>JVM process (resets on restart)</td></tr>
-      </table>
-    </div>
-
-    <div class="sidebar-node" id="sn-session">
-      <h2>HTTP Session (@SessionScope Cart)</h2>
-      <span class="layer-badge" style="background:rgba(210,168,255,0.1);color:#d2a8ff;border:1px solid rgba(210,168,255,0.3);">Session State</span>
-      <p>Cart is a @SessionScope @Component — Spring creates one CGLIB-proxied instance per HTTP session. Stores CartItem snapshots (productId, name, price at time of adding) so cart totals don't shift if a product's price changes mid-session. Controllers inject Cart directly; services receive it as a method parameter and never hold it as state.</p>
-      <table class="prop-table">
-        <tr><td>Scope</td><td>@SessionScope (one per HTTP session)</td></tr>
-        <tr><td>Proxy</td><td>CGLIB — injected as singleton-scoped proxy</td></tr>
-        <tr><td>Price snapshot</td><td>Price locked at time of cart.addItem()</td></tr>
-        <tr><td>Discounts</td><td>cartPromotionDiscount + couponDiscount</td></tr>
-      </table>
-    </div>
-  </aside>
-</section>
-
-<!-- ══════════════════════════════════════════
-     PANEL 2 — DATA JOURNEYS
-══════════════════════════════════════════ -->
-<section class="panel" id="panel-journeys">
-  <h1>Data Journeys</h1>
-  <p>Step-by-step walkthroughs of the major data flows through the system, including the checkout saga happy path, all failure and compensation scenarios, and supporting flows.</p>
-
-  <div id="journey-list"></div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     PANEL 3 — COMPONENTS
-══════════════════════════════════════════ -->
-<section class="panel" id="panel-comps">
-  <h1>Components</h1>
-  <p>Every service, controller, infrastructure piece, and domain class in the Fresh Groceries codebase — with layer classification, file paths, and key responsibilities.</p>
-  <div class="comp-grid" id="comp-grid"></div>
-</section>
-
-<!-- ══════════════════════════════════════════
-     PANEL 4 — TOPICS
-══════════════════════════════════════════ -->
-<section class="panel" id="panel-topics">
-  <h1>Topics &amp; Event Streams</h1>
-  <p>Data contracts, fault modes, and discount topics across all external service boundaries in the system.</p>
-  <div class="topic-grid" id="topic-grid"></div>
-</section>
+<!-- ═══════════════════════════════ TOPICS TAB ══════════════════════════════════ -->
+<div id="topic-panel" class="panel">
+  <h2>Topics &amp; Domain Objects</h2>
+  <p class="panel-sub">Key domain objects, request/response records, and session-scoped state that flow through the system.</p>
+  <div class="card-grid" id="topic-grid"></div>
+</div>
 
 <script>
-// ══════════════════════════════════════════
-//  DATA
-// ══════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+const NODES = [
+  /* ── Browser / Entry ─────────────────────────────────── */
+  {
+    id: "browser", label: "Browser", sub: "HTTP Client",
+    tier: "client", x: 100, y: 260,
+    color: "#1c2128", stroke: "#58a6ff",
+    type: "Client", desc: "The user's web browser. Sends HTTP GET/POST requests to Spring MVC controllers and renders Thymeleaf HTML responses. Session state (the Cart) lives here as an HTTP session cookie pointing to a server-side @SessionScope bean.",
+    props: [["Protocol","HTTP/1.1"], ["Session","Cookie-based (JSESSIONID)"], ["Rendering","Thymeleaf server-side"]],
+    code: "GET  /\nGET  /cart\nPOST /cart/add\nPOST /checkout\nGET  /checkout/confirmation/{id}\nGET  /demo"
+  },
+
+  /* ── Controllers ─────────────────────────────────────── */
+  {
+    id: "product-ctrl", label: "ProductController", sub: "GET /",
+    tier: "controller", x: 300, y: 120,
+    color: "#0d2340", stroke: "#58a6ff",
+    type: "Controller", desc: "Handles the product catalogue pages. Lists all products grouped by category, supports search/filter. Read-only — no session writes. CartModelAdvice injects cartItemCount and categories into the model for every request automatically.",
+    props: [["Routes","GET /"], ["Dependencies","ProductService, CategoryRepository"], ["Template","index.html"]],
+    code: "@Controller\npublic class ProductController {\n  @GetMapping(\"/\")\n  public String home(Model model, ...) {\n    model.addAttribute(\"products\",\n      productService.findAll());\n    return \"index\";\n  }\n}"
+  },
+  {
+    id: "cart-ctrl", label: "CartController", sub: "POST /cart/**",
+    tier: "controller", x: 300, y: 260,
+    color: "#0d2340", stroke: "#58a6ff",
+    type: "Controller", desc: "All cart mutations: add, update, remove, clear. Every mutation calls refreshDiscounts() which re-evaluates both discount streams (CartPromotionService + CouponService). Quantities are capped to product.stockQuantity. The coupon engine is gracefully degraded — failure sets a couponServiceDown flag rather than aborting.",
+    props: [["Routes","GET /cart, POST /cart/add, POST /cart/update, POST /cart/remove, POST /cart/clear"], ["Session bean","Cart (@SessionScope)"], ["Template","cart.html"]],
+    code: "private void refreshDiscounts() {\n  cart.applyCartPromotion(\n    cartPromotionService.evaluate(cart.getItems()));\n  try {\n    cart.applyCoupons(\n      couponService.evaluate(cart.getItems()));\n    cart.setCouponServiceDown(false);\n  } catch (ServiceUnavailableException e) {\n    cart.applyCoupons(CouponResult.none());\n    cart.setCouponServiceDown(true);\n  }\n}"
+  },
+  {
+    id: "checkout-ctrl", label: "CheckoutController", sub: "POST /checkout",
+    tier: "controller", x: 300, y: 400,
+    color: "#0d2340", stroke: "#58a6ff",
+    type: "Controller", desc: "Invokes the checkout saga and maps each exception type to a distinct UI message. A fresh UUID idempotency key is generated on every GET /checkout form load. On success, the cart is cleared and the browser redirects to the confirmation page. The SagaTrace accumulated during a failed saga is attached to the model for colour-coded display.",
+    props: [["Routes","GET /checkout, POST /checkout, GET /checkout/confirmation/{id}"], ["Idempotency","UUID per form load"], ["Exceptions caught","5 distinct types"]],
+    code: "SagaTrace trace = new SagaTrace();\ntry {\n  Order order = checkoutService.checkout(\n    cart, request, trace);\n  cart.clear();\n  return \"redirect:/checkout/confirmation/\"\n    + order.getId();\n} catch (PaymentFailedException e) {\n  model.addAttribute(\"rollbackNote\",\n    \"No charge was made.\");\n  model.addAttribute(\"sagaTrace\",\n    trace.getSteps());\n  return \"checkout\";\n}"
+  },
+  {
+    id: "demo-ctrl", label: "DemoController", sub: "GET/POST /demo",
+    tier: "controller", x: 300, y: 540,
+    color: "#0d2340", stroke: "#d29922",
+    type: "Controller", desc: "Chaos engineering control panel. Reads and writes DemoFaultConfig. Supports one-click presets (25+) that configure fault modes for all stubs simultaneously. Presets cover: payment-down, payment-slow, payment-timeout, payment-flaky, inventory failures at each saga step, promotion degradation modes, and coupon engine faults.",
+    props: [["Route","GET /demo, POST /demo, POST /demo/preset, POST /demo/reset"], ["Presets","25+ one-click scenarios"], ["Fault targets","Inventory (3 points), Payment, Promotion, Coupon"]],
+    code: "// Example preset: payment-timeout\ncase \"payment-timeout\" -> {\n  config.setPaymentMode(FaultMode.SLOW);\n  config.setSlowDelayMs(8000);\n  config.setPaymentTimeoutMs(2000);\n}"
+  },
+  {
+    id: "cart-advice", label: "CartModelAdvice", sub: "@ControllerAdvice",
+    tier: "controller", x: 300, y: 660,
+    color: "#0d2340", stroke: "#8b949e",
+    type: "ControllerAdvice", desc: "Injects cartItemCount and categories into every Thymeleaf model automatically using @ModelAttribute. This avoids duplicating that logic in every controller and keeps templates DRY. Runs for all @Controller classes before the handler method returns.",
+    props: [["Scope","All controllers"], ["Injects","cartItemCount, categories"], ["Mechanism","@ModelAttribute methods"]],
+    code: "@ControllerAdvice\npublic class CartModelAdvice {\n  @ModelAttribute\n  public void addCartCount(Model model) {\n    model.addAttribute(\"cartItemCount\",\n      cart.getItemCount());\n    model.addAttribute(\"categories\",\n      categoryRepository.findAll());\n  }\n}"
+  },
+
+  /* ── Services ────────────────────────────────────────── */
+  {
+    id: "checkout-svc", label: "CheckoutService", sub: "Saga Orchestrator",
+    tier: "service", x: 560, y: 340,
+    color: "#1a0a2e", stroke: "#bc8cff",
+    type: "Service (Saga)", desc: "The most important class in the codebase. Orchestrates the checkout saga — a sequence of 6 steps across 3 external services. Intentionally NOT @Transactional because the saga spans external calls that cannot be wrapped in a DB transaction. Payment runs on a dedicated daemon-thread executor with a configurable timeout deadline. Each step logs its outcome to SagaTrace.",
+    props: [["Pattern","Saga (orchestration)"], ["Thread model","Payment on dedicated executor"], ["Payment timeout","Configurable (default 3000ms)"], ["Transactions","Per-step @Transactional only"]],
+    code: "// Step 4: Payment on dedicated thread\nFuture<PaymentResult> f =\n  paymentExecutor.submit(\n    () -> paymentService.processPayment(req));\ntry {\n  payment = f.get(timeoutMs,\n    TimeUnit.MILLISECONDS);\n} catch (TimeoutException e) {\n  f.cancel(true);\n  inventoryService.releaseReservation(res);\n  throw new ServiceUnavailableException(...);\n}"
+  },
+  {
+    id: "product-svc", label: "ProductService", sub: "Catalogue queries",
+    tier: "service", x: 560, y: 140,
+    color: "#111d0a", stroke: "#3fb950",
+    type: "Service", desc: "Thin service wrapping ProductRepository. Provides search, category filter, and stock display queries. Does not interact with the external inventory service — stock quantities shown in the catalogue come from the H2 DB (display cache), not from StubInventoryService.",
+    props: [["Role","Catalogue read queries"], ["Stock source","H2 DB (display cache)"], ["Search","Name LIKE query"]],
+    code: "@Service\npublic class ProductService {\n  public List<Product> findAll() {\n    return productRepository.findAll();\n  }\n  public List<Product> search(String q) {\n    return productRepository\n      .findByNameContainingIgnoreCase(q);\n  }\n}"
+  },
+  {
+    id: "order-svc", label: "OrderService", sub: "@Transactional writes",
+    tier: "service", x: 560, y: 480,
+    color: "#111d0a", stroke: "#3fb950",
+    type: "Service", desc: "Handles order persistence and the post-order DB stock decrement. createOrder() is @Transactional and writes Order + OrderItems in one DB transaction. decrementStock() calls ProductRepository.decrementStock() which uses a @Modifying JPQL UPDATE to atomically reduce stockQuantity. cancelOrder() marks the order CANCELLED.",
+    props: [["createOrder","@Transactional — writes Order + OrderItems"], ["cancelOrder","Sets status = CANCELLED"], ["Stock","Decrements Product.stockQuantity after commit"]],
+    code: "// Custom @Modifying query — no load-then-save\n@Modifying\n@Query(\"UPDATE Product p SET \"\n  + \"p.stockQuantity = p.stockQuantity - :qty \"\n  + \"WHERE p.id = :id AND \"\n  + \"p.stockQuantity >= :qty\")\nint decrementStock(\n  @Param(\"id\") Long id,\n  @Param(\"qty\") int qty);"
+  },
+
+  /* ── External Services ───────────────────────────────── */
+  {
+    id: "inventory-stub", label: "StubInventoryService", sub: "Warehouse simulation",
+    tier: "external", x: 820, y: 200,
+    color: "#1a1000", stroke: "#d29922",
+    type: "External Stub", desc: "Simulates a warehouse inventory system. Maintains two ConcurrentHashMaps: available (productId→units) and reservations (reservationId→quantities). Implements a two-phase reserve→commit protocol to prevent overselling. Three independent fault injection points: checkAvailability, reserveStock, commitReservation. releaseReservation is never faulted — compensations must be reliable.",
+    props: [["State","ConcurrentHashMap (in-memory)"], ["Protocol","2-phase: reserve → commit/release"], ["Fault points","3 (check, reserve, commit)"], ["Seeded by","DataInitializer on startup"]],
+    code: "// Two-phase stock lifecycle:\n// available → reserved (reserveStock)\n// reserved  → gone     (commitReservation)\n// reserved  → available (releaseReservation)\n\npublic InventoryReservation reserveStock(\n    Map<Long,Integer> requested) {\n  String id = UUID.randomUUID().toString();\n  requested.forEach((k,v) ->\n    available.merge(k, -v, Integer::sum));\n  reservations.put(id, new HashMap<>(requested));\n  return new InventoryReservation(id, requested);\n}"
+  },
+  {
+    id: "payment-stub", label: "StubPaymentService", sub: "Gateway simulation",
+    tier: "external", x: 820, y: 360,
+    color: "#1a1000", stroke: "#d29922",
+    type: "External Stub", desc: "Simulates a payment gateway (Stripe-like). Supports test card numbers for decline scenarios. Implements idempotency: a second request with the same idempotencyKey returns the original result without re-charging. The idempotency toggle can be disabled in the demo panel to observe double-charging. Runs on a dedicated thread inside CheckoutService with a configurable timeout.",
+    props: [["Idempotency","UUID key per form load; ConcurrentHashMap cache"], ["Test cards","4111...=success, 4000...0002=decline, 4000...9995=insufficient, 4000...0127=bad CVC"], ["Thread","Dedicated daemon executor in CheckoutService"]],
+    code: "// Idempotent replay — no second charge\nif (faultConfig.isPaymentIdempotencyEnabled()\n    && key != null) {\n  PaymentResult cached =\n    idempotentCache.get(key);\n  if (cached != null) return cached;\n}\n// Test card: always-decline\nString normalized =\n  request.cardNumber()\n    .replaceAll(\"[\\\\s-]\", \"\");\nif (DECLINE_REASONS.containsKey(normalized))\n  throw new PaymentFailedException(...);"
+  },
+  {
+    id: "promotion-stub", label: "StubPromotionService", sub: "Promo code engine",
+    tier: "external", x: 820, y: 500,
+    color: "#1a1000", stroke: "#d29922",
+    type: "External Stub", desc: "Validates promo codes and calculates discounts. Supports percentage and fixed-amount discounts. When DOWN/FLAKY, CheckoutService decides based on the promotionGracefulDegradation flag whether to treat the failure as hard-stop or gracefully skip the discount and continue — demonstrating a key architectural design decision about critical vs non-critical dependencies.",
+    props: [["Codes","SAVE10 (10%), SAVE20 (20%), FLAT5 ($5), WELCOME (15%), FRESH ($4), BIG25 (25%), HALFOFF (50%)"], ["Graceful degrade","Configurable — skip discount or hard-fail"], ["Fault modes","NORMAL, DOWN, SLOW, FLAKY"]],
+    code: "// In CheckoutService — graceful degradation:\ntry {\n  promotion = promotionService\n    .applyPromotion(code, subtotal);\n} catch (ServiceUnavailableException e) {\n  if (!faultConfig\n      .isPromotionGracefulDegradation()) {\n    throw e; // hard fail\n  }\n  // continue without discount\n  trace.degraded(\"2\", \"applyPromotion\",\n    \"service unavailable — degraded\");\n}"
+  },
+  {
+    id: "coupon-stub", label: "StubCouponService", sub: "Offer engine",
+    tier: "external", x: 820, y: 640,
+    color: "#1a1000", stroke: "#d29922",
+    type: "External Stub", desc: "Evaluates automatic coupon offers based on cart contents — no code required. Supports BOGO (Croissants), bundle deals (Spinach+Yogurt, Bread+Cheese, Tea+OJ), multi-buy quantity discounts (Muffins, Cold Brew, Bagels), and spend threshold ($20+). getOfferCatalog() is never fault-injected so the UI always shows the offer list even when the engine is DOWN.",
+    props: [["Offer types","BOGO, BUNDLE, QUANTITY_OFF, SPEND_THRESHOLD"], ["Catalog","Always returns (no fault injection)"], ["Evaluate","Subject to DOWN/SLOW/FLAKY"], ["Cart integration","CartController.refreshDiscounts()"]],
+    code: "// BOGO: every 2nd Croissant pack free\nCartItem c = byName.get(\"Croissants (2-pack)\");\nif (c != null && c.getQuantity() >= 2) {\n  int free = c.getQuantity() / 2;\n  BigDecimal disc = c.getUnitPrice()\n    .multiply(BigDecimal.valueOf(free));\n  offers.add(new CouponOffer(\n    \"BOGO-CROISSANT\", ..., disc));\n}\n\n// SPEND THRESHOLD: cart >= $20 -> $3 off\nif (subtotal.compareTo(\n    new BigDecimal(\"20.00\")) >= 0) {\n  offers.add(new CouponOffer(\n    \"SPEND20-SAVE3\", ...,\n    new BigDecimal(\"3.00\")));\n}"
+  },
+  {
+    id: "cartpromo-stub", label: "StubCartPromotionService", sub: "Auto quantity deals",
+    tier: "external", x: 820, y: 780,
+    color: "#1a1000", stroke: "#d29922",
+    type: "External Stub", desc: "Evaluates automatic quantity-based cart deals with no code required. Called on every cart mutation and on viewCart. Never fault-injected — cart deal evaluation must be reliable. Active deals: Whole Milk (qty≥3: buy 2 get 1 free), Organic Apples (qty≥4: $2 off), Bananas (qty≥3: $1 off), Cheddar Cheese (qty≥2: $1.50 off), Sparkling Water (qty≥2: $2 off), Orange Juice (qty≥3: $2 off).",
+    props: [["Deals","6 active quantity-based deals"], ["Trigger","Automatic — no code needed"], ["Fault injection","None — always reliable"], ["Evaluation","Every cart mutation"]],
+    code: "// Whole Milk: qty>=3 → buy 2, get 1 free\nCartItem milk = byName.get(\"Whole Milk (1 gal)\");\nif (milk != null && milk.getQuantity() >= 3) {\n  int freePacks = milk.getQuantity() / 3;\n  BigDecimal disc = milk.getUnitPrice()\n    .multiply(valueOf(freePacks));\n  deals.add(new CartDeal(\n    \"Whole Milk (1 gal)\",\n    \"Buy 2 Get 1 Free\", disc));\n}"
+  },
+
+  /* ── Infrastructure ──────────────────────────────────── */
+  {
+    id: "h2-db", label: "H2 Database", sub: "In-memory / JPA",
+    tier: "infra", x: 560, y: 680,
+    color: "#0a1a0a", stroke: "#3fb950",
+    type: "Infrastructure", desc: "H2 in-memory relational database. Stores Categories, Products, Orders, and OrderItems. Seeded by DataInitializer on every startup. Accessible at /h2-console while running (JDBC URL: jdbc:h2:mem:grocerydb, user: sa, no password). Product.stockQuantity is a display cache — the authoritative inventory lives in StubInventoryService's ConcurrentHashMap.",
+    props: [["Type","H2 in-memory"], ["Tables","Category, Product, Order, OrderItem"], ["Console","/h2-console (JDBC: jdbc:h2:mem:grocerydb)"], ["Stock role","Display cache only — authoritative is in-memory stub"]],
+    code: "// Two sources of truth:\n// H2 Product.stockQuantity → display cache\n//   updated by OrderService after commit\n\n// StubInventoryService.available → authoritative\n//   updated on reserve/commit/release\n//   seeded from DB by DataInitializer"
+  },
+  {
+    id: "fault-config", label: "DemoFaultConfig", sub: "@Component singleton",
+    tier: "infra", x: 560, y: 560,
+    color: "#1a0a00", stroke: "#d29922",
+    type: "Infrastructure", desc: "Singleton @Component holding volatile fault-injection settings for every stub service. All fields are volatile for thread visibility — reads/writes are visible across the servlet thread and payment executor thread without synchronization. Stubs read this bean on each invocation. DemoController writes it.",
+    props: [["Inventory faults","3 independent (check, reserve, commit)"], ["Payment faults","Mode + idempotency toggle + timeout (ms)"], ["Promotion faults","Mode + graceful degradation toggle"], ["Coupon faults","Mode"], ["Shared","slowDelayMs, paymentTimeoutMs"]],
+    code: "@Component\npublic class DemoFaultConfig {\n  private volatile FaultMode paymentMode\n    = FaultMode.NORMAL;\n  private volatile int paymentTimeoutMs\n    = 3000;\n  private volatile int slowDelayMs\n    = 5000;\n  // AtomicInteger for FLAKY counter\n  private final AtomicInteger\n    paymentFlakyCounter = new AtomicInteger();\n}"
+  },
+  {
+    id: "data-init", label: "DataInitializer", sub: "ApplicationRunner",
+    tier: "infra", x: 560, y: 800,
+    color: "#0a1a0a", stroke: "#3fb950",
+    type: "Infrastructure", desc: "Seeds the H2 database and StubInventoryService on every application startup. Implements ApplicationRunner so it runs after the Spring context is fully initialized. Seeds 4 categories and 16 products in one @Transactional method. After saving each Product, mirrors its stock to StubInventoryService.initializeStock() so both sources of truth start in sync.",
+    props: [["Trigger","ApplicationRunner.run() after context init"], ["Scope","@Transactional — all rows committed atomically"], ["Products","16 across 4 categories"], ["Edge cases","Free Range Eggs (stock=0), Roma Tomatoes/Croissants (stock≤3)"]],
+    code: "private void seed(String name,\n    Category cat, String price, int stock) {\n  Product p = productRepository.save(\n    new Product(name, cat,\n      new BigDecimal(price), stock));\n  // Mirror to authoritative in-memory store\n  inventoryService.initializeStock(\n    p.getId(), stock);\n}"
+  }
+];
+
+const EDGES = [
+  { from: "browser",       to: "product-ctrl",   label: "GET /",         color: "#58a6ff" },
+  { from: "browser",       to: "cart-ctrl",       label: "POST /cart/**", color: "#58a6ff" },
+  { from: "browser",       to: "checkout-ctrl",   label: "POST /checkout",color: "#bc8cff" },
+  { from: "browser",       to: "demo-ctrl",       label: "GET/POST /demo",color: "#d29922" },
+  { from: "product-ctrl",  to: "product-svc",     label: "findAll()",     color: "#3fb950" },
+  { from: "cart-ctrl",     to: "cartpromo-stub",  label: "evaluate()",    color: "#d29922" },
+  { from: "cart-ctrl",     to: "coupon-stub",     label: "evaluate()",    color: "#d29922" },
+  { from: "checkout-ctrl", to: "checkout-svc",    label: "checkout()",    color: "#bc8cff" },
+  { from: "checkout-svc",  to: "inventory-stub",  label: "check/reserve/commit", color: "#d29922" },
+  { from: "checkout-svc",  to: "payment-stub",    label: "processPayment()", color: "#d29922" },
+  { from: "checkout-svc",  to: "promotion-stub",  label: "applyPromotion()", color: "#d29922" },
+  { from: "checkout-svc",  to: "order-svc",       label: "createOrder()", color: "#3fb950" },
+  { from: "order-svc",     to: "h2-db",           label: "JPA write",     color: "#3fb950" },
+  { from: "product-svc",   to: "h2-db",           label: "JPA read",      color: "#3fb950" },
+  { from: "demo-ctrl",     to: "fault-config",    label: "read/write",    color: "#d29922" },
+  { from: "data-init",     to: "h2-db",           label: "seed",          color: "#3fb950" },
+  { from: "data-init",     to: "inventory-stub",  label: "initStock()",   color: "#d29922" },
+  { from: "cart-advice",   to: "h2-db",           label: "categories",    color: "#8b949e" }
+];
+
 const JOURNEYS = [
   {
-    title: "Happy Path Checkout",
-    subtitle: "All 6 saga steps succeed — order confirmed",
+    id: "checkout-happy",
+    name: "Checkout — Happy Path",
+    desc: "A customer adds items to their cart, enters a valid card, and successfully completes checkout. All six saga steps succeed in sequence.",
     steps: [
-      { badge: "1", type: "ok",   name: "User adds items to cart",               desc: "CartController.addItem() adds CartItem snapshots to the @SessionScope Cart. CartPromotionService re-evaluates quantity deals on every mutation." },
-      { badge: "2", type: "ok",   name: "Cart page loads discounts",              desc: "GET /cart calls refreshDiscounts(): CartPromotionService.evaluate() (never faults) + CouponService.evaluate() (gracefully degraded on failure)." },
-      { badge: "3", type: "ok",   name: "User opens checkout form",               desc: "GET /checkout generates a fresh UUID idempotency key, embeds it as a hidden field, and renders the checkout form with cart summary." },
-      { badge: "4", type: "ok",   name: "Step 1: checkAvailability",              desc: "StubInventoryService reads the ConcurrentHashMap available. If stock < requested for any item, throws InsufficientStockException. No side effects." },
-      { badge: "5", type: "ok",   name: "Step 2: applyPromotion",                 desc: "StubPromotionService validates the promo code and calculates a discount. If no code was entered, this step is skipped (trace: SKIPPED)." },
-      { badge: "6", type: "ok",   name: "Step 3: reserveStock",                   desc: "StubInventoryService deducts quantities from available and stores a new entry in the reservations map. Stock is now held for this order." },
-      { badge: "7", type: "ok",   name: "Step 4: processPayment (dedicated thread)", desc: "StubPaymentService processes the payment request on a daemon thread. CheckoutService calls Future.get(paymentTimeoutMs). Returns a payment token on success." },
-      { badge: "8", type: "ok",   name: "Step 5: createOrder",                    desc: "OrderService.createOrder() persists an Order + OrderItems in H2 and calls ProductRepository.decrementStock() to update the display cache. @Transactional." },
-      { badge: "9", type: "ok",   name: "Step 6: commitReservation",              desc: "StubInventoryService.commitReservation() removes the reservation entry from the map — the stock deduction is now permanent. No compensation needed." },
-      { badge: "10", type: "ok",  name: "Redirect to confirmation",               desc: "Cart is cleared. Browser is redirected to GET /checkout/confirmation/{id} which renders the order summary." }
+      { num: "1", name: "Browse & Add to Cart", color: "#58a6ff",
+        desc: "Customer browses the product catalogue (GET /). ProductController queries ProductService which reads from H2. Customer POSTs to /cart/add. CartController caps quantity to product.stockQuantity and calls refreshDiscounts() to evaluate CartPromotionService and CouponService.",
+        code: "CartController.addItem()\n→ cart.addItem(product, qty)\n→ refreshDiscounts()\n  → cartPromotionService.evaluate()\n  → couponService.evaluate()" },
+      { num: "2", name: "View Cart & See Discounts", color: "#58a6ff",
+        desc: "GET /cart re-evaluates both discount streams on every load. CartPromotionService computes quantity-based deals (no code needed). CouponService evaluates automatic offer eligibility. Totals show subtotal, cart deal discounts, and coupon discounts.",
+        code: "Cart.getEffectiveTotal() =\n  subtotal\n  - cartPromotionDiscount\n  - couponDiscount" },
+      { num: "3", name: "Load Checkout Form", color: "#58a6ff",
+        desc: "GET /checkout generates a fresh UUID idempotency key, baked into a hidden form field. This key prevents double-charging if the user double-clicks Submit or if a network retry replays the POST.",
+        code: "CheckoutRequest request = new CheckoutRequest();\nrequest.setIdempotencyKey(\n  UUID.randomUUID().toString());" },
+      { num: "4", name: "Step 1 — checkAvailability", color: "#3fb950",
+        desc: "Read-only pre-flight check against StubInventoryService.available map. No side effects — safe to retry if this fails. Throws InsufficientStockException if any product quantity exceeds available units.",
+        code: "inventoryService.checkAvailability(quantities);\ntrace.ok(\"1\", \"checkAvailability\");" },
+      { num: "5", name: "Step 2 — applyPromotion", color: "#3fb950",
+        desc: "If a promo code was entered, StubPromotionService validates and calculates the discount. With graceful degradation ON, a service failure is logged as DEGRADED and checkout continues with zero promo discount. With it OFF, the failure propagates and checkout aborts.",
+        code: "promotion = promotionService\n  .applyPromotion(code, subtotal);\ntrace.ok(\"2\", \"applyPromotion\");" },
+      { num: "6", name: "Step 3 — reserveStock", color: "#3fb950",
+        desc: "SIDE EFFECT: StubInventoryService atomically decrements the available map and records a reservation entry. Returns an InventoryReservation with a UUID. If this fails, no compensation is needed (payment hasn't happened yet).",
+        code: "reservation = inventoryService\n  .reserveStock(quantities);\ntrace.ok(\"3\", \"reserveStock\");" },
+      { num: "7", name: "Step 4 — processPayment", color: "#3fb950",
+        desc: "SIDE EFFECT: Payment call runs on a dedicated daemon thread via ExecutorService. CheckoutService blocks with Future.get(timeoutMs). StubPaymentService checks idempotency cache, applies fault mode, validates card number, generates PAY-XXXXXXXX token.",
+        code: "Future<PaymentResult> f =\n  paymentExecutor.submit(\n    () -> paymentService.processPayment(req));\npayment = f.get(timeoutMs, MILLISECONDS);\ntrace.ok(\"4\", \"processPayment → \" +\n  payment.paymentToken());" },
+      { num: "8", name: "Step 5 — createOrder", color: "#3fb950",
+        desc: "OrderService.createOrder() is @Transactional. Writes Order entity + OrderItem rows for each cart item. Also decrements Product.stockQuantity in H2 via a @Modifying query (display cache update). On failure, compensation fires: refund + releaseReservation.",
+        code: "order = orderService.createOrder(\n  cart, promotion, payment, finalTotal);\ntrace.ok(\"5\", \"createOrder → #\"\n  + order.getId());" },
+      { num: "9", name: "Step 6 — commitReservation", color: "#3fb950",
+        desc: "Removes the reservation entry from the ConcurrentHashMap — the stock hold becomes permanent. On failure (most complex compensation): refund + cancelOrder + releaseReservation.",
+        code: "inventoryService.commitReservation(reservation);\ntrace.ok(\"6\", \"commitReservation\");\n\n// Cart cleared, redirect to confirmation\ncart.clear();\nreturn \"redirect:/checkout/confirmation/\"\n  + order.getId();" }
     ]
   },
   {
-    title: "Payment Failure — Declined Card",
-    subtitle: "Steps 1-3 succeed; Step 4 fails; releaseReservation fires",
+    id: "checkout-payment-fail",
+    name: "Checkout — Payment Failure",
+    desc: "Payment is declined (or the payment service is DOWN). The saga compensates by releasing the inventory reservation so stock returns to the pool.",
     steps: [
-      { badge: "1-3", type: "ok",   name: "Saga steps 1-3 complete",              desc: "checkAvailability (OK), applyPromotion (OK), reserveStock (OK). Stock is now held in the reservations map." },
-      { badge: "4",   type: "err",  name: "Step 4: processPayment — FAILED",       desc: "StubPaymentService throws PaymentFailedException (card declined, insufficient funds, or incorrect CVC). Caught as ExecutionException from Future.get()." },
-      { badge: "C1",  type: "comp", name: "COMPENSATION: releaseReservation",      desc: "inventoryService.releaseReservation(reservation) returns held quantities to the available map. Stock is restored to the pool." },
-      { badge: "!",   type: "err",  name: "saga aborts",                           desc: "PaymentFailedException is re-thrown. CheckoutController catches it and renders the checkout page with the specific decline reason and a rollback note." }
+      { num: "1", name: "Steps 1-3 succeed normally", color: "#3fb950",
+        desc: "checkAvailability, applyPromotion, and reserveStock all succeed. Stock has been decremented from the available pool — an InventoryReservation is held." },
+      { num: "2", name: "Step 4 — processPayment FAILS", color: "#f85149",
+        desc: "Card is declined (e.g. card 4000-0000-0000-0002) OR payment service is DOWN/FLAKY. ExecutionException wraps the PaymentFailedException or ServiceUnavailableException.",
+        code: "// Declined card\nif (DECLINE_REASONS.containsKey(normalized))\n  throw new PaymentFailedException(\n    \"card declined\", declineCode);\n\n// Or service DOWN:\nFaultInjector.apply(PAYMENT_DOWN, ...)\n// → throws ServiceUnavailableException" },
+      { num: "C", name: "COMPENSATION — releaseReservation", color: "#bc8cff",
+        desc: "Stock is returned to the available pool. The reservation entry is removed from the ConcurrentHashMap. No charge was made — safe to retry.",
+        comp: "inventoryService.releaseReservation(reservation);\ntrace.compensated(\"releaseReservation\",\n  \"payment failure — stock returned to pool\");" },
+      { num: "4", name: "UI shows failure + SagaTrace", color: "#d29922",
+        desc: "CheckoutController catches PaymentFailedException or ServiceUnavailableException, attaches the rollback note and the colour-coded SagaTrace to the model, and re-renders the checkout form. Cart is intact.",
+        code: "model.addAttribute(\"rollbackNote\",\n  \"Inventory reservation released.\"\n  + \" No charge was made.\");\nmodel.addAttribute(\"sagaTrace\",\n  trace.getSteps());\nreturn \"checkout\";" }
     ]
   },
   {
-    title: "Payment Timeout",
-    subtitle: "Payment thread exceeds paymentTimeoutMs — reservation released, no charge",
+    id: "checkout-timeout",
+    name: "Checkout — Payment Timeout",
+    desc: "The payment service is configured SLOW (delay > timeout). CheckoutService cancels the Future and compensates.",
     steps: [
-      { badge: "1-3", type: "ok",   name: "Saga steps 1-3 complete",              desc: "Stock reserved successfully. Payment thread is submitted to paymentExecutor." },
-      { badge: "4",   type: "err",  name: "Step 4: TimeoutException",              desc: "Future.get(3000, MILLISECONDS) throws TimeoutException. paymentFuture.cancel(true) is called to interrupt the payment thread." },
-      { badge: "C1",  type: "comp", name: "COMPENSATION: releaseReservation",      desc: "Stock returned to the pool. No charge was made because the payment thread was cancelled before a response arrived." },
-      { badge: "!",   type: "err",  name: "ServiceUnavailableException thrown",     desc: "User sees: 'Payment service timed out after 3000ms'. Rollback note confirms no charge was made. Set paymentTimeoutMs < slowDelayMs to trigger this." }
+      { num: "1", name: "Demo panel: payment-timeout preset", color: "#d29922",
+        desc: "DemoController.applyPreset('payment-timeout') sets paymentMode=SLOW, slowDelayMs=8000, paymentTimeoutMs=2000. This means the payment call will take 8s but the saga only waits 2s.",
+        code: "case \"payment-timeout\" -> {\n  config.setPaymentMode(FaultMode.SLOW);\n  config.setSlowDelayMs(8000);\n  config.setPaymentTimeoutMs(2000);\n}" },
+      { num: "2", name: "Steps 1-3 succeed, stock reserved", color: "#3fb950",
+        desc: "checkAvailability, applyPromotion, and reserveStock succeed. Inventory reservation is active." },
+      { num: "3", name: "Step 4 — TimeoutException fires", color: "#f85149",
+        desc: "Future.get(2000, MILLISECONDS) throws TimeoutException after 2 seconds. The payment thread is still running in the background sleeping for 8 seconds — it gets cancelled.",
+        code: "try {\n  payment = f.get(timeoutMs, MILLISECONDS);\n} catch (TimeoutException e) {\n  f.cancel(true); // interrupt payment thread\n  ..." },
+      { num: "C", name: "COMPENSATION — releaseReservation", color: "#bc8cff",
+        desc: "Stock returned to the pool. ServiceUnavailableException propagated with a specific compensation note about the timeout.",
+        comp: "inventoryService.releaseReservation(reservation);\ntrace.compensated(\"releaseReservation\",\n  \"payment timeout — stock returned to pool\");\nthrow new ServiceUnavailableException(\n  \"Payment timed out after \" + timeoutMs + \"ms\");" }
     ]
   },
   {
-    title: "Inventory Commit Failure — Full Rollback",
-    subtitle: "Steps 1-5 all succeed; Step 6 fails — most complex compensation",
+    id: "checkout-commit-fail",
+    name: "Checkout — Inventory Commit Failure",
+    desc: "The most complex failure path. Payment has settled and the order is persisted, but commitReservation fails. All three compensations fire.",
     steps: [
-      { badge: "1-5", type: "ok",   name: "Saga steps 1-5 complete",              desc: "Stock reserved, payment charged, order persisted in H2. This is the most dangerous failure point: money has been taken and the order is in the DB." },
-      { badge: "6",   type: "err",  name: "Step 6: commitReservation — FAILED",    desc: "StubInventoryService.commitReservation() throws ServiceUnavailableException (configured via inventory-commit-down preset)." },
-      { badge: "C1",  type: "comp", name: "COMPENSATION: refund",                  desc: "paymentService.refund(payment.paymentToken()) — reverses the charge. The payment token from Step 4 is used to identify the transaction." },
-      { badge: "C2",  type: "comp", name: "COMPENSATION: cancelOrder",             desc: "orderService.cancelOrder(order) sets the order status to CANCELLED in H2. @Transactional." },
-      { badge: "C3",  type: "comp", name: "COMPENSATION: releaseReservation",      desc: "inventoryService.releaseReservation(reservation) returns stock to the pool. All three compensations must all succeed for consistency." },
-      { badge: "!",   type: "err",  name: "CheckoutException thrown",              desc: "User sees: 'All compensating actions have been applied: payment refunded and inventory released.' This demonstrates why compensations must be reliable — they cannot be fault-injected." }
+      { num: "1", name: "Steps 1-5 succeed", color: "#3fb950",
+        desc: "All steps through createOrder succeed. Payment token is settled. Order row exists in H2 with OrderStatus.CONFIRMED." },
+      { num: "2", name: "Step 6 — commitReservation FAILS", color: "#f85149",
+        desc: "Inventory commit is DOWN or FLAKY. The reservation was never removed from the map.",
+        code: "inventoryService.commitReservation(reservation);\n// throws ServiceUnavailableException" },
+      { num: "C1", name: "COMPENSATION 1 — refund", color: "#bc8cff",
+        desc: "Payment token is refunded. StubPaymentService removes the token from settled map and clears the idempotency cache entry.",
+        comp: "paymentService.refund(payment.paymentToken());\ntrace.compensated(\"refund\", payment.paymentToken());" },
+      { num: "C2", name: "COMPENSATION 2 — cancelOrder", color: "#bc8cff",
+        desc: "Order status set to CANCELLED in H2.",
+        comp: "orderService.cancelOrder(order);\ntrace.compensated(\"cancelOrder\",\n  \"#\" + order.getId());" },
+      { num: "C3", name: "COMPENSATION 3 — releaseReservation", color: "#bc8cff",
+        desc: "Stock returned to the available pool. Full rollback complete.",
+        comp: "inventoryService.releaseReservation(reservation);\ntrace.compensated(\"releaseReservation\",\n  \"commit failed — full rollback\");" }
     ]
   },
   {
-    title: "Promotion Service — Graceful Degradation",
-    subtitle: "Promotion DOWN with graceful-degradation ON — checkout proceeds at full price",
+    id: "cart-add",
+    name: "Add to Cart Flow",
+    desc: "How a product reaches the cart and both discount streams are re-evaluated.",
     steps: [
-      { badge: "1",   type: "ok",     name: "Step 1: checkAvailability — OK",     desc: "Inventory pre-flight passes. No side effects." },
-      { badge: "2",   type: "degrade",name: "Step 2: applyPromotion — DEGRADED",  desc: "StubPromotionService throws ServiceUnavailableException. Since promotionGracefulDegradation=true, CheckoutService catches it, logs DEGRADED, and continues with zero discount." },
-      { badge: "3-6", type: "ok",     name: "Steps 3-6 complete normally",        desc: "reserveStock, processPayment, createOrder, commitReservation all succeed. The final total does not include the promo discount, but the order is placed." },
-      { badge: "ok",  type: "ok",     name: "Order confirmed at full price",       desc: "SagaTrace shows step 2 as DEGRADED (orange). User is not shown an error — the promo silently didn't apply." }
+      { num: "1", name: "POST /cart/add", color: "#58a6ff",
+        desc: "Browser submits productId + quantity. CartController looks up the Product from ProductRepository.",
+        code: "Product product = productRepository\n  .findById(productId).orElseThrow(...);" },
+      { num: "2", name: "Stock cap check", color: "#58a6ff",
+        desc: "If the product is out of stock, redirect with flash error. If adding would exceed Product.stockQuantity minus what's already in cart, cap quantity to available. This uses the H2 display cache, not the authoritative stub.",
+        code: "int alreadyInCart = cart.getItems().stream()\n  .filter(i -> i.getProductId().equals(productId))\n  .mapToInt(CartItem::getQuantity)\n  .findFirst().orElse(0);\nint available = product.getStockQuantity()\n  - alreadyInCart;\nint allowedQty = Math.min(quantity, available);" },
+      { num: "3", name: "Cart.addItem()", color: "#58a6ff",
+        desc: "CartItem is a price-snapshot object — it captures the product price at time of adding. This means cart totals don't shift if a product's price changes mid-session.",
+        code: "public void addItem(Product product, int qty) {\n  // finds or creates CartItem snapshot\n  // CartItem stores: productId, name,\n  // unitPrice (snapshot!), quantity\n}" },
+      { num: "4", name: "refreshDiscounts()", color: "#3fb950",
+        desc: "CartPromotionService.evaluate() re-checks all quantity-based deals. CouponService.evaluate() re-checks all automatic offer eligibility. If CouponService throws, couponServiceDown flag is set and the cart continues with zero coupon discount.",
+        code: "cart.applyCartPromotion(\n  cartPromotionService.evaluate(cart.getItems()));\ntry {\n  cart.applyCoupons(\n    couponService.evaluate(cart.getItems()));\n} catch (ServiceUnavailableException e) {\n  cart.applyCoupons(CouponResult.none());\n  cart.setCouponServiceDown(true);\n}" }
     ]
   },
   {
-    title: "Promotion Service — Hard Fail",
-    subtitle: "Promotion DOWN with graceful-degradation OFF — checkout aborts, no side effects",
+    id: "chaos-panel",
+    name: "Chaos Engineering Panel",
+    desc: "How the /demo panel injects faults and how stubs respond.",
     steps: [
-      { badge: "1",   type: "ok",  name: "Step 1: checkAvailability — OK",        desc: "Read-only pre-flight passes." },
-      { badge: "2",   type: "err", name: "Step 2: applyPromotion — FAILED",       desc: "StubPromotionService throws ServiceUnavailableException. promotionGracefulDegradation=false, so the exception is rethrown — checkout aborts." },
-      { badge: "!",   type: "skip","Step 3-6": "Never reached", name: "Steps 3-6 never reached", desc: "Because no side effects have occurred yet (stock not reserved, payment not attempted), no compensations are needed. Safe to retry." }
-    ]
-  },
-  {
-    title: "Cart Add — Discount Refresh Flow",
-    subtitle: "How discounts are evaluated on every cart mutation",
-    steps: [
-      { badge: "1",   type: "ok",  name: "POST /cart/add",                        desc: "CartController.addItem() receives productId + quantity. Stock is checked against Product.stockQuantity (H2 display cache). Quantity is capped to available stock." },
-      { badge: "2",   type: "ok",  name: "cart.addItem(product, qty)",             desc: "Cart (@SessionScope) creates/updates a CartItem snapshot with the current price. Price is locked at add time." },
-      { badge: "3",   type: "ok",  name: "CartPromotionService.evaluate(items)",   desc: "StubCartPromotionService checks trigger quantities for each product and returns a CartPromotionResult with active CartDeals and total discount." },
-      { badge: "4",   type: "ok",  name: "CouponService.evaluate(items)",          desc: "StubCouponService evaluates all offer rules (BOGO, bundle, multi-buy, spend-threshold) and returns matching CouponOffers. May throw ServiceUnavailableException." },
-      { badge: "5",   type: "ok",  name: "cart.applyCoupons / fallback",           desc: "On success: applies coupon discount and clears couponServiceDown flag. On ServiceUnavailableException: applies CouponResult.none() and sets couponServiceDown=true for UI." },
-      { badge: "6",   type: "ok",  name: "redirect:/ with flash message",          desc: "User is redirected to the product catalogue with a success flash. The cart badge in the nav is updated via CartModelAdvice on the next render." }
-    ]
-  },
-  {
-    title: "Idempotency — Double Submit Prevention",
-    subtitle: "How the payment idempotency key prevents double-charging on retries",
-    steps: [
-      { badge: "1",   type: "ok",  name: "GET /checkout — fresh UUID generated",  desc: "UUID.randomUUID() is set as request.idempotencyKey and embedded as a hidden form field. Same key for the entire form session." },
-      { badge: "2",   type: "ok",  name: "POST /checkout — first attempt",         desc: "CheckoutService passes the idempotency key in PaymentRequest. StubPaymentService stores the result in a ConcurrentHashMap keyed by idempotencyKey." },
-      { badge: "3",   type: "ok",  name: "Network blip — user resubmits form",     desc: "Same idempotency key is in the resubmitted form. The payment stub detects the duplicate key and returns the cached result." },
-      { badge: "4",   type: "ok",  name: "No double charge",                       desc: "The second POST processes the cached payment result without contacting the payment gateway again. Cart is cleared; user sees confirmation." },
-      { badge: "!",   type: "warn","name": "Idempotency OFF demo",                 desc: "When the idempotency toggle is OFF on the demo panel, the stub ignores the key. A second submit creates a new charge — demonstrating the risk of non-idempotent payment endpoints." }
+      { num: "1", name: "Visit /demo", color: "#d29922",
+        desc: "DemoController.GET reads DemoFaultConfig and renders the control panel showing current modes for all 6 fault points. All presets are listed with one-click buttons." },
+      { num: "2", name: "Apply a preset or manual fault", color: "#d29922",
+        desc: "POST /demo/preset or POST /demo with form fields. DemoController writes the target FaultMode values to DemoFaultConfig. Since fields are volatile, the change is immediately visible to all threads.",
+        code: "// POST /demo/preset?preset=payment-down\ncase \"payment-down\" -> {\n  config.setPaymentMode(FaultMode.DOWN);\n}" },
+      { num: "3", name: "FaultInjector.apply() on next call", color: "#d29922",
+        desc: "Each stub calls FaultInjector.apply(mode, label, slowMs, flakyCounter) at the top of every method. DOWN/FLAKY throws ServiceUnavailableException. SLOW calls Thread.sleep(slowDelayMs). FLAKY alternates: 1st call fails, 2nd succeeds, etc.",
+        code: "public static void apply(FaultMode mode,\n    String label, int slowMs,\n    AtomicInteger flakyCounter) {\n  switch (mode) {\n    case DOWN -> throw new\n      ServiceUnavailableException(label);\n    case SLOW -> Thread.sleep(slowMs);\n    case FLAKY -> {\n      if (flakyCounter.getAndIncrement() % 2 == 0)\n        throw new ServiceUnavailableException(...);\n    }\n  }\n}" },
+      { num: "4", name: "SagaTrace rendered in UI", color: "#d29922",
+        desc: "For failed checkouts, the SagaTrace list is attached to the model. Each step is colour-coded: green=OK, red=FAILED, purple=COMPENSATED, grey=SKIPPED, yellow=DEGRADED.",
+        code: "// Step status enum:\nOK | FAILED | COMPENSATED | SKIPPED | DEGRADED" }
     ]
   }
 ];
 
 const COMPS = [
-  { layer: "controller", name: "ProductController",      file: "controller/ProductController.java",       desc: "Renders the product catalogue and detail pages. Read-only; delegates to ProductService. No exception handling needed.",                               tags: ["@Controller", "GET /", "Thymeleaf"] },
-  { layer: "controller", name: "CartController",         file: "controller/CartController.java",          desc: "Handles add/update/remove/clear cart operations. Calls refreshDiscounts() after every mutation. Gracefully degrades on CouponService failure.",        tags: ["@Controller", "GET/POST /cart", "@SessionScope"] },
-  { layer: "controller", name: "CheckoutController",     file: "controller/CheckoutController.java",      desc: "Invokes CheckoutService saga. Maps 5 typed exceptions to specific UI messages. Generates idempotency key on GET. Attaches SagaTrace to model on failure.", tags: ["@Controller", "POST /checkout", "SagaTrace"] },
-  { layer: "controller", name: "DemoController",         file: "controller/DemoController.java",          desc: "Reads/writes DemoFaultConfig for the chaos engineering panel at /demo. Handles 25+ one-click scenario presets.",                                     tags: ["@Controller", "GET/POST /demo", "Chaos"] },
-  { layer: "controller", name: "CartModelAdvice",        file: "controller/CartModelAdvice.java",         desc: "ControllerAdvice that injects cartItemCount and categories into every Thymeleaf template automatically.",                                            tags: ["@ControllerAdvice", "Global model"] },
-  { layer: "service",    name: "CheckoutService",        file: "service/CheckoutService.java",            desc: "Saga orchestrator. Coordinates 6 steps across 3 external services with explicit compensating actions. NOT @Transactional. Payment runs on a dedicated daemon thread executor with a hard deadline.", tags: ["@Service", "Saga", "NOT @Transactional", "ExecutorService"] },
-  { layer: "service",    name: "OrderService",           file: "service/OrderService.java",               desc: "All @Transactional DB writes for orders: createOrder (persists Order+OrderItems, decrements stock) and cancelOrder (sets CANCELLED status).",         tags: ["@Service", "@Transactional", "JPA"] },
-  { layer: "service",    name: "ProductService",         file: "service/ProductService.java",             desc: "Read-only wrapper around ProductRepository. Provides filtered product listings and single lookups for controllers.",                                  tags: ["@Service", "read-only", "JPA"] },
-  { layer: "external",   name: "StubInventoryService",   file: "external/inventory/stub/StubInventoryService.java",     desc: "Simulates warehouse inventory with two-phase reserve/commit. ConcurrentHashMap for thread-safety. Three independent fault points. releaseReservation never faulted.", tags: ["@Service", "ConcurrentHashMap", "two-phase", "fault-injectable"] },
-  { layer: "external",   name: "StubPaymentService",     file: "external/payment/stub/StubPaymentService.java",         desc: "Simulates payment gateway with idempotency key caching. Test card numbers map to success/decline outcomes. Runs on daemon thread pool called from CheckoutService.", tags: ["@Service", "idempotency", "daemon thread"] },
-  { layer: "external",   name: "StubPromotionService",   file: "external/promotion/stub/StubPromotionService.java",     desc: "Validates promo codes and computes percentage or flat discounts. Non-critical — supports graceful degradation. Fault-injectable via DemoFaultConfig.",          tags: ["@Service", "promo codes", "graceful degrade"] },
-  { layer: "external",   name: "StubCartPromotionService", file: "external/cartpromotion/stub/StubCartPromotionService.java", desc: "Evaluates automatic quantity-based deals on every cart mutation. Never fault-injected. Returns CartPromotionResult with active CartDeals and total discount.", tags: ["@Service", "qty deals", "no fault injection"] },
-  { layer: "external",   name: "StubCouponService",      file: "external/coupon/stub/StubCouponService.java",           desc: "Evaluates BOGO, bundle, multi-buy, and spend-threshold coupon offers. Fault-injectable. getOfferCatalog() never faulted so UI always shows available offers.",   tags: ["@Service", "coupons", "fault-injectable"] },
-  { layer: "demo",       name: "DemoFaultConfig",        file: "demo/DemoFaultConfig.java",               desc: "Singleton holding volatile fault mode settings for all stubs. AtomicInteger flaky counters for alternating failures. resetAll() restores NORMAL for all services.", tags: ["@Component", "singleton", "volatile", "AtomicInteger"] },
-  { layer: "demo",       name: "FaultInjector",          file: "demo/FaultInjector.java",                 desc: "Static utility called by every stub. DOWN throws ServiceUnavailableException. SLOW sleeps on the calling thread. FLAKY throws on even-numbered calls using AtomicInteger.", tags: ["static", "NORMAL|DOWN|SLOW|FLAKY"] },
-  { layer: "demo",       name: "FaultMode",              file: "demo/FaultMode.java",                     desc: "Enum: NORMAL (no-op), DOWN (immediate throw), SLOW (thread.sleep then succeed), FLAKY (throw on even-numbered calls).",                              tags: ["enum", "NORMAL", "DOWN", "SLOW", "FLAKY"] },
-  { layer: "demo",       name: "SagaTrace",              file: "demo/SagaTrace.java",                     desc: "Accumulates a per-request step log during the saga. Statuses: OK, FAILED, COMPENSATED, SKIPPED, DEGRADED. Added to model on failure for colour-coded Thymeleaf rendering.", tags: ["per-request", "OK|FAILED|COMPENSATED|SKIPPED|DEGRADED"] },
-  { layer: "domain",     name: "Product",                file: "domain/Product.java",                     desc: "JPA entity with name, category, price, stockQuantity. stockQuantity is the display cache — the authoritative checkout value lives in StubInventoryService.",              tags: ["@Entity", "JPA", "stockQuantity (display cache)"] },
-  { layer: "domain",     name: "Order",                  file: "domain/Order.java",                       desc: "JPA entity holding OrderStatus (CONFIRMED or CANCELLED), total amount, and a list of OrderItems. Created by OrderService.createOrder() after successful payment.",      tags: ["@Entity", "JPA", "OrderStatus"] },
-  { layer: "domain",     name: "OrderItem",              file: "domain/OrderItem.java",                   desc: "JPA entity: order reference, product reference, quantity, unit price at time of order. Snapshot — price doesn't change if the Product price later changes.",             tags: ["@Entity", "price snapshot"] },
-  { layer: "domain",     name: "Category",               file: "domain/Category.java",                    desc: "JPA entity with a name (Produce, Dairy, Bakery, Beverages). Used for nav filtering on the product catalogue.",                                                          tags: ["@Entity", "JPA"] },
-  { layer: "domain",     name: "OrderStatus",            file: "domain/OrderStatus.java",                 desc: "Enum: CONFIRMED (happy path), CANCELLED (compensation from Steps 5-6 failure). Orders transition to CANCELLED via OrderService.cancelOrder().",                           tags: ["enum", "CONFIRMED", "CANCELLED"] },
-  { layer: "config",     name: "DataInitializer",        file: "config/DataInitializer.java",             desc: "ApplicationRunner that seeds 16 products across 4 categories on every startup. Mirrors each product's stock into StubInventoryService to keep both sources of truth in sync.", tags: ["@Component", "ApplicationRunner", "@Transactional"] },
-  { layer: "dto",        name: "Cart",                   file: "dto/Cart.java",                           desc: "@SessionScope @Component — one CGLIB-proxied instance per HTTP session. Holds CartItems, cartPromotionDiscount, couponDiscount, and the couponServiceDown flag.",          tags: ["@SessionScope", "@Component", "CGLIB proxy"] },
-  { layer: "dto",        name: "CartItem",               file: "dto/CartItem.java",                       desc: "Session-serializable snapshot: productId, productName, quantity, price at time of adding. Price is frozen so cart totals don't shift during the session.",               tags: ["price snapshot", "serializable"] },
-  { layer: "dto",        name: "CheckoutRequest",        file: "dto/CheckoutRequest.java",                desc: "Form-binding DTO: cardNumber, cardHolderName, promoCode, idempotencyKey. The idempotency key is generated once per GET /checkout and embedded as a hidden field.",       tags: ["form DTO", "idempotencyKey", "@ModelAttribute"] }
+  { icon: "🌐", iconBg: "#0d2340", title: "ProductController", sub: "controller/ProductController.java",
+    desc: "Handles GET / and product browsing. Injects cartItemCount and categories via CartModelAdvice @ControllerAdvice.",
+    tags: [["@Controller","blue"],["@GetMapping","blue"],["Read-only","green"]],
+    code: "GET / → renders product catalogue\nSupports ?search= and ?category= filters" },
+  { icon: "🛒", iconBg: "#0d2340", title: "CartController", sub: "controller/CartController.java",
+    desc: "All cart operations. Caps quantities to display stock. Refreshes both discount streams on every mutation. Gracefully degrades coupon engine failures.",
+    tags: [["@Controller","blue"],["@SessionScope Cart","purple"],["Graceful degrade","orange"]],
+    code: "POST /cart/add\nPOST /cart/update\nPOST /cart/remove\nPOST /cart/clear" },
+  { icon: "💳", iconBg: "#0d2340", title: "CheckoutController", sub: "controller/CheckoutController.java",
+    desc: "Saga invocation, idempotency key generation, and exception-to-UI mapping. Attaches SagaTrace to failed responses.",
+    tags: [["@Controller","blue"],["Idempotency","purple"],["SagaTrace","orange"]],
+    code: "GET /checkout → fresh UUID idempotency key\nPOST /checkout → invoke saga\nGET /checkout/confirmation/{id}" },
+  { icon: "🔥", iconBg: "#1a0a00", title: "DemoController", sub: "controller/DemoController.java",
+    desc: "Chaos engineering panel. Reads/writes DemoFaultConfig. Applies 25+ one-click presets for all fault scenarios.",
+    tags: [["@Controller","blue"],["Chaos","red"],["25+ presets","orange"]],
+    code: "Presets: all-normal, payment-down,\npayment-slow, payment-timeout,\ninventory-check-down, inventory-reserve-slow,\npromotion-down-graceful, coupon-flaky, ..." },
+  { icon: "🔄", iconBg: "#0d2340", title: "CartModelAdvice", sub: "controller/CartModelAdvice.java",
+    desc: "Injects cartItemCount and categories into every model before render. Keeps controllers DRY.",
+    tags: [["@ControllerAdvice","blue"],["@ModelAttribute","blue"]],
+    code: "@ModelAttribute\nvoid addGlobals(Model model) {\n  model.addAttribute(\"cartItemCount\",\n    cart.getItemCount());\n}" },
+  { icon: "⚡", iconBg: "#1a0a2e", title: "CheckoutService", sub: "service/CheckoutService.java",
+    desc: "Saga orchestrator. 6 steps, 3 external services, 3 compensation paths. Payment on dedicated thread with configurable timeout. NOT @Transactional.",
+    tags: [["Saga","purple"],["Not @Transactional","red"],["Dedicated thread","orange"]],
+    code: "checkAvailability → applyPromotion\n→ reserveStock → processPayment\n→ createOrder → commitReservation" },
+  { icon: "📦", iconBg: "#111d0a", title: "ProductService", sub: "service/ProductService.java",
+    desc: "Thin catalogue query service. Wraps ProductRepository for findAll, search, and category filtering.",
+    tags: [["@Service","green"],["Read-only","green"]],
+    code: "findAll() | search(q)\nfindByCategory(categoryId)" },
+  { icon: "📋", iconBg: "#111d0a", title: "OrderService", sub: "service/OrderService.java",
+    desc: "Creates and cancels orders. createOrder() is @Transactional — writes Order + OrderItems + decrements display stock. cancelOrder() sets status=CANCELLED.",
+    tags: [["@Service","green"],["@Transactional","blue"],["JPA write","orange"]],
+    code: "@Transactional\npublic Order createOrder(\n  Cart cart, PromotionResult promo,\n  PaymentResult payment,\n  BigDecimal finalTotal)" },
+  { icon: "🏭", iconBg: "#1a1000", title: "StubInventoryService", sub: "external/inventory/stub/",
+    desc: "Two-phase stock lifecycle with ConcurrentHashMap. 3 independent fault injection points. releaseReservation never faulted — compensations must be reliable.",
+    tags: [["External Stub","orange"],["2-phase reserve","purple"],["ConcurrentHashMap","blue"]],
+    code: "checkAvailability() ← faultable\nreserveStock()       ← faultable\ncommitReservation()  ← faultable\nreleaseReservation() ← never faulted" },
+  { icon: "💰", iconBg: "#1a1000", title: "StubPaymentService", sub: "external/payment/stub/",
+    desc: "Idempotent payment gateway simulation. Test cards for decline, insufficient funds, bad CVC. Runs on dedicated daemon thread in CheckoutService.",
+    tags: [["External Stub","orange"],["Idempotency","purple"],["Test cards","blue"]],
+    code: "4111 1111 1111 1111 → success\n4000 0000 0000 0002 → declined\n4000 0000 0000 9995 → insufficient\n4000 0000 0000 0127 → bad CVC" },
+  { icon: "🏷️", iconBg: "#1a1000", title: "StubPromotionService", sub: "external/promotion/stub/",
+    desc: "Validates promo codes. Supports graceful degradation — when DOWN, checkout can continue without the discount if the toggle is ON.",
+    tags: [["External Stub","orange"],["Graceful degrade","green"],["Percentage + Fixed","blue"]],
+    code: "SAVE10 (10%) | SAVE20 (20%)\nFLAT5 ($5)   | WELCOME (15%)\nFRESH ($4)   | BIG25 (25%)\nHALFOFF (50%)" },
+  { icon: "🎫", iconBg: "#1a1000", title: "StubCouponService", sub: "external/coupon/stub/",
+    desc: "Automatic offer engine. BOGO, bundle deals, multi-buy discounts, spend threshold. getOfferCatalog() never faulted so UI always shows offer list.",
+    tags: [["External Stub","orange"],["Auto offers","green"],["8 offer types","blue"]],
+    code: "BOGO-CROISSANT | BUNDLE-SPINACH-YOGURT\nMUFFIN-MULTIBUY | COLD-BREW-SAVE3\nBUNDLE-BREAD-CHEESE | BAGEL-MULTIBUY\nBUNDLE-TEA-OJ | SPEND20-SAVE3" },
+  { icon: "🎁", iconBg: "#1a1000", title: "StubCartPromotionService", sub: "external/cartpromotion/stub/",
+    desc: "Automatic quantity-based cart deals. No code required. Never fault-injected. Evaluated on every cart mutation.",
+    tags: [["External Stub","orange"],["Auto deals","green"],["6 deals","blue"]],
+    code: "Whole Milk qty≥3    → Buy 2 Get 1 Free\nOrganic Apples qty≥4 → Save $2.00\nBananas qty≥3       → Save $1.00\nCheddar qty≥2       → Save $1.50\nSparkling Water qty≥2→ Save $2.00\nOrange Juice qty≥3  → Save $2.00" },
+  { icon: "🗄️", iconBg: "#0a1a0a", title: "H2 Database", sub: "com.h2database:h2 (runtime)",
+    desc: "In-memory relational DB. Stores Category, Product, Order, OrderItem. Product.stockQuantity is the display cache — authoritative stock is in StubInventoryService.",
+    tags: [["H2 in-memory","green"],["Display cache","orange"],["4 tables","blue"]],
+    code: "jdbc:h2:mem:grocerydb\nuser: sa / no password\n/h2-console (while running)" },
+  { icon: "⚙️", iconBg: "#1a0a00", title: "DemoFaultConfig", sub: "demo/DemoFaultConfig.java",
+    desc: "Volatile singleton holding all fault settings. Thread-safe via volatile fields. AtomicInteger for FLAKY counters. Read by stubs, written by DemoController.",
+    tags: [["@Component","blue"],["volatile fields","purple"],["Thread-safe","green"]],
+    code: "FaultMode: NORMAL | DOWN | SLOW | FLAKY\nfaultPoints: 6 independent\ntimeouts: paymentTimeoutMs, slowDelayMs" },
+  { icon: "🌱", iconBg: "#0a1a0a", title: "DataInitializer", sub: "config/DataInitializer.java",
+    desc: "Seeds 4 categories and 16 products on startup. Mirrors stock to StubInventoryService to keep both sources of truth in sync.",
+    tags: [["ApplicationRunner","green"],["@Transactional","blue"],["16 products","orange"]],
+    code: "Categories: Produce, Dairy,\n            Bakery, Beverages\nEdge cases: Free Range Eggs (stock=0),\n  Roma Tomatoes (stock=3),\n  Croissants (stock=2)" },
+  { icon: "🔍", iconBg: "#0a1a0a", title: "FaultInjector", sub: "demo/FaultInjector.java",
+    desc: "Single dispatch point for all fault injection. Called at the top of every faultable stub method. DOWN/FLAKY throws ServiceUnavailableException. SLOW sleeps.",
+    tags: [["Utility","blue"],["4 modes","orange"]],
+    code: "static void apply(FaultMode mode,\n  String label, int slowMs,\n  AtomicInteger counter) {\n  DOWN  → throw ServiceUnavailableException\n  SLOW  → Thread.sleep(slowMs)\n  FLAKY → throws on odd calls\n  NORMAL→ no-op\n}" },
+  { icon: "📊", iconBg: "#1a0a00", title: "SagaTrace", sub: "demo/SagaTrace.java",
+    desc: "Accumulates per-request step log during a checkout saga. Steps have status: OK, FAILED, COMPENSATED, SKIPPED, DEGRADED. Attached to model on failure for colour-coded UI display.",
+    tags: [["Per-request","blue"],["5 statuses","orange"]],
+    code: "trace.ok(\"1\", \"checkAvailability\");\ntrace.failed(\"4\", \"processPayment\", msg);\ntrace.compensated(\"releaseReservation\", detail);\ntrace.degraded(\"2\", \"applyPromotion\", detail);" }
 ];
 
 const TOPICS = [
-  {
-    category: "Inventory Service Boundary",
-    name: "checkAvailability",
-    desc: "Read-only pre-flight availability check. Takes a Map<Long,Integer> (productId -> requested qty), throws InsufficientStockException if any product is understocked. No state mutations — safe to retry indefinitely.",
-    meta: [
-      { k: "Side effects", v: "None" },
-      { k: "Fault modes", v: "NORMAL | DOWN | SLOW | FLAKY" },
-      { k: "Compensation", v: "None needed" },
-      { k: "Retry safe", v: "Yes" }
-    ]
-  },
-  {
-    category: "Inventory Service Boundary",
-    name: "reserveStock",
-    desc: "Deducts requested quantities from the available ConcurrentHashMap and stores a new entry in the reservations map. Returns an InventoryReservation record with a UUID reservationId. This is the first saga step with side effects.",
-    meta: [
-      { k: "Side effects", v: "Reduces available stock" },
-      { k: "Fault modes", v: "NORMAL | DOWN | SLOW | FLAKY" },
-      { k: "Compensation", v: "releaseReservation" },
-      { k: "Output", v: "InventoryReservation(reservationId, items)" }
-    ]
-  },
-  {
-    category: "Inventory Service Boundary",
-    name: "commitReservation",
-    desc: "Removes the reservation entry from the map, making the stock deduction permanent. Called only after both payment success and order DB persistence. Failure here triggers the full three-compensation rollback.",
-    meta: [
-      { k: "Side effects", v: "Removes reservation entry" },
-      { k: "Fault modes", v: "NORMAL | DOWN | SLOW | FLAKY" },
-      { k: "On failure", v: "refund + cancelOrder + releaseReservation" },
-      { k: "Retry safe", v: "No — compensations must fire first" }
-    ]
-  },
-  {
-    category: "Inventory Service Boundary",
-    name: "releaseReservation",
-    desc: "Returns held quantities to the available map. The compensation action — never fault-injected because compensating transactions must be reliable. Called on payment failure, timeout, order persistence failure, and commit failure.",
-    meta: [
-      { k: "Side effects", v: "Returns stock to available pool" },
-      { k: "Fault injection", v: "NEVER — compensations must succeed" },
-      { k: "Called on", v: "Payment fail / timeout / order fail / commit fail" },
-      { k: "Idempotent", v: "Yes (remove from map is safe to repeat)" }
-    ]
-  },
-  {
-    category: "Payment Service Boundary",
-    name: "processPayment",
-    desc: "Charges the payment card. Runs on a dedicated daemon thread pool so CheckoutService can enforce a hard timeout via Future.get(paymentTimeoutMs). On success returns a PaymentResult with a payment token used for refunds.",
-    meta: [
-      { k: "Side effects", v: "Charges the card" },
-      { k: "Fault modes", v: "NORMAL | DOWN | SLOW | FLAKY" },
-      { k: "Thread", v: "Dedicated daemon executor" },
-      { k: "Timeout", v: "paymentTimeoutMs (default 3000ms)" },
-      { k: "Idempotency", v: "UUID key deduplicates retries" }
-    ]
-  },
-  {
-    category: "Payment Service Boundary",
-    name: "refund",
-    desc: "Reverses a previously charged payment using the payment token. Called as a compensation action after order persist failure (Step 5) or inventory commit failure (Step 6). Never fault-injected.",
-    meta: [
-      { k: "Side effects", v: "Reverses charge" },
-      { k: "Fault injection", v: "NEVER — must be reliable" },
-      { k: "Input", v: "paymentToken from PaymentResult" },
-      { k: "Called on", v: "Order persist fail / inventory commit fail" }
-    ]
-  },
-  {
-    category: "Promotion Service Boundary",
-    name: "applyPromotion",
-    desc: "Validates a promo code and computes the discount amount. InvalidPromotionException for bad codes; ServiceUnavailableException for service outage. Non-critical — supports graceful degradation controlled by promotionGracefulDegradation flag.",
-    meta: [
-      { k: "Side effects", v: "None — read-only" },
-      { k: "Fault modes", v: "NORMAL | DOWN | SLOW | FLAKY" },
-      { k: "Graceful degrade", v: "Yes — proceeds with $0 discount" },
-      { k: "Invalid code", v: "InvalidPromotionException" }
-    ]
-  },
-  {
-    category: "Cart Promotion Boundary",
-    name: "CartPromotionService.evaluate",
-    desc: "Evaluates all quantity-based deals against current cart items. Returns CartPromotionResult with active CartDeals and total discount. Called on every cart mutation (add/update/remove). Never fault-injected.",
-    meta: [
-      { k: "Side effects", v: "None" },
-      { k: "Fault injection", v: "Never" },
-      { k: "Trigger", v: "Every cart mutation" },
-      { k: "Output", v: "CartPromotionResult(deals, totalDiscount)" }
-    ]
-  },
-  {
-    category: "Coupon Service Boundary",
-    name: "CouponService.evaluate",
-    desc: "Evaluates BOGO, bundle, multi-buy, and spend-threshold offers against cart contents. Fault-injectable. CartController gracefully degrades on ServiceUnavailableException by calling CouponResult.none() and setting couponServiceDown=true.",
-    meta: [
-      { k: "Side effects", v: "None" },
-      { k: "Fault modes", v: "NORMAL | DOWN | SLOW | FLAKY" },
-      { k: "Graceful degrade", v: "Yes — cart shows zero coupon discount" },
-      { k: "Catalog", v: "getOfferCatalog() never faulted" }
-    ]
-  },
-  {
-    category: "Coupon Service Boundary",
-    name: "CouponService.getOfferCatalog",
-    desc: "Returns static metadata about all available coupon offers. Never fault-injected so the cart UI can always show the offer catalogue (with an 'unavailable' badge per offer) even when the evaluation engine is DOWN.",
-    meta: [
-      { k: "Side effects", v: "None" },
-      { k: "Fault injection", v: "Never — metadata must always load" },
-      { k: "Output", v: "List<CouponOfferHint>" }
-    ]
-  },
-  {
-    category: "Fault Injection",
-    name: "FaultMode.DOWN",
-    desc: "Throws ServiceUnavailableException immediately when applied. Used to simulate a complete service outage. Stubs read DemoFaultConfig on each invocation and delegate to FaultInjector.apply() before any real logic runs.",
-    meta: [
-      { k: "Effect", v: "Immediate ServiceUnavailableException" },
-      { k: "No delay", v: "Throws before any work" },
-      { k: "Retry safe", v: "Depends on saga step" }
-    ]
-  },
-  {
-    category: "Fault Injection",
-    name: "FaultMode.SLOW",
-    desc: "Blocks the calling thread for slowDelayMs milliseconds (default 5000ms) then returns normally. SLOW on inventory blocks the servlet request thread — no timeout protection exists there. SLOW on payment plus paymentTimeoutMs < slowDelayMs produces a TimeoutException compensation.",
-    meta: [
-      { k: "Effect", v: "Thread.sleep(slowDelayMs) then succeed" },
-      { k: "Default delay", v: "5000ms" },
-      { k: "Inventory SLOW", v: "Blocks servlet thread — dangerous" },
-      { k: "Payment SLOW", v: "May trigger TimeoutException" }
-    ]
-  },
-  {
-    category: "Fault Injection",
-    name: "FaultMode.FLAKY",
-    desc: "Fails every other call using an AtomicInteger per service. Even-numbered calls throw ServiceUnavailableException; odd-numbered calls succeed. Demonstrates safe retry for read-only operations and the risk of retrying payment without idempotency keys.",
-    meta: [
-      { k: "Effect", v: "Throws on even-numbered calls" },
-      { k: "Counter", v: "AtomicInteger per service" },
-      { k: "Read-only safe", v: "Yes — retry or degrade" },
-      { k: "Payment FLAKY", v: "Risky without idempotency key" }
-    ]
-  },
-  {
-    category: "Stock Consistency",
-    name: "Two Sources of Truth",
-    desc: "Product.stockQuantity (H2 DB) is the display value shown on product pages. StubInventoryService.available (ConcurrentHashMap) is the authoritative checkout value. Both are seeded in sync by DataInitializer on startup. The two-phase reserve/commit keeps them consistent without a distributed lock.",
-    meta: [
-      { k: "H2 stockQuantity", v: "Display only — updated after confirmed order" },
-      { k: "ConcurrentHashMap", v: "Authoritative for checkout" },
-      { k: "Sync event", v: "Startup (DataInitializer) + order confirmation" },
-      { k: "Race protection", v: "Two-phase reserve/commit" }
-    ]
-  },
-  {
-    category: "Session & State",
-    name: "Cart (@SessionScope)",
-    desc: "One Cart instance per HTTP session, proxied via CGLIB so it can be injected into singleton-scoped controllers. Stores CartItems as price snapshots frozen at add time. Holds cartPromotionDiscount, couponDiscount, and couponServiceDown flag across requests.",
-    meta: [
-      { k: "Scope", v: "@SessionScope" },
-      { k: "Proxy type", v: "CGLIB" },
-      { k: "Price freeze", v: "At cart.addItem() time" },
-      { k: "Discount fields", v: "cartPromotionDiscount, couponDiscount" }
-    ]
-  },
-  {
-    category: "Session & State",
-    name: "Idempotency Key",
-    desc: "UUID generated once per GET /checkout and embedded as a hidden form field. Passed in PaymentRequest so StubPaymentService can cache results by key. A network retry or double-submit with the same key replays the cached result — no second charge.",
-    meta: [
-      { k: "Generated", v: "UUID.randomUUID() per form load" },
-      { k: "Scope", v: "Single checkout form session" },
-      { k: "Used by", v: "StubPaymentService (ConcurrentHashMap cache)" },
-      { k: "Demo toggle", v: "Enable/disable on /demo panel" }
-    ]
-  }
+  { icon: "🛒", iconBg: "#0d2340", title: "Cart", sub: "dto/Cart.java — @SessionScope @Component",
+    desc: "Session-scoped Spring bean. Stores a list of CartItem price-snapshots. Holds computed fields: subtotal, cartPromotionDiscount, couponDiscount, effectiveTotal. Also carries the CartPromotionResult, CouponResult, and couponServiceDown flag.",
+    tags: [["@SessionScope","purple"],["Price snapshot","orange"],["Per-session","blue"]],
+    code: "getSubtotal()              // sum of line totals\ngetCartPromotionDiscount() // from CartPromotionResult\ngetCouponDiscount()        // from CouponResult\ngetEffectiveTotal()        // subtotal - all discounts\nisCouponServiceDown()      // graceful degrade flag" },
+  { icon: "📦", iconBg: "#0d2340", title: "CartItem", sub: "dto/CartItem.java",
+    desc: "Session-serializable price snapshot. Captures productId, productName, and unitPrice at time of adding. Price does not change if the product's price changes mid-session.",
+    tags: [["Price snapshot","orange"],["Immutable price","green"]],
+    code: "Long productId\nString productName\nBigDecimal unitPrice  // snapshot at add time\nint quantity\n\ngetLineTotal() = unitPrice * quantity" },
+  { icon: "💳", iconBg: "#0d2340", title: "CheckoutRequest", sub: "dto/CheckoutRequest.java",
+    desc: "Form-backing object for the checkout page. Holds card number, cardholder name, optional promo code, and the idempotency key (UUID generated fresh on GET /checkout).",
+    tags: [["Form DTO","blue"],["Idempotency key","purple"]],
+    code: "String cardNumber\nString cardHolderName\nString promoCode       // optional\nString idempotencyKey  // UUID per form load" },
+  { icon: "🏷️", iconBg: "#1a0a2e", title: "PromotionResult", sub: "external/promotion/PromotionResult.java",
+    desc: "Immutable record returned by PromotionService. Carries the validated promo code, description, and computed discount amount. PromotionResult.none() is used when no code is entered.",
+    tags: [["Record","blue"],["Immutable","green"]],
+    code: "record PromotionResult(\n  String code,\n  String description,\n  BigDecimal discount\n)\nPromotionResult.none() → discount = ZERO" },
+  { icon: "💰", iconBg: "#1a0a00", title: "PaymentResult", sub: "external/payment/PaymentResult.java",
+    desc: "Immutable record returned by PaymentService on success. Carries the payment token (PAY-XXXXXXXX), charged amount, and PaymentStatus. The token is used for refund operations.",
+    tags: [["Record","blue"],["Token-based","purple"]],
+    code: "record PaymentResult(\n  String paymentToken,  // PAY-XXXXXXXX\n  BigDecimal amount,\n  PaymentStatus status\n)\nPaymentStatus: SUCCESS | DECLINED | FAILED" },
+  { icon: "🎫", iconBg: "#1a1000", title: "CouponResult", sub: "external/coupon/CouponResult.java",
+    desc: "Result from CouponService.evaluate(). Contains the list of active CouponOffer objects and total coupon discount. CouponResult.none() on engine failure.",
+    tags: [["Record","blue"],["Automatic offers","green"]],
+    code: "record CouponResult(\n  List<CouponOffer> offers,\n  BigDecimal totalDiscount\n)\nCouponResult.none() → empty, ZERO" },
+  { icon: "🎁", iconBg: "#1a1000", title: "CartPromotionResult", sub: "external/cartpromotion/CartPromotionResult.java",
+    desc: "Result from CartPromotionService.evaluate(). Contains the list of active CartDeal objects and total deal discount. Never null — always returns a result.",
+    tags: [["Record","blue"],["Quantity deals","green"]],
+    code: "record CartPromotionResult(\n  List<CartDeal> deals,\n  BigDecimal totalDiscount\n)" },
+  { icon: "📋", iconBg: "#111d0a", title: "Order / OrderItem", sub: "domain/Order.java + OrderItem.java",
+    desc: "JPA entities. Order holds customer details, total, payment token, OrderStatus, and a list of OrderItems. OrderItem is a denormalized snapshot of product name, price, and quantity at time of order.",
+    tags: [["@Entity","green"],["JPA","blue"],["Snapshot","orange"]],
+    code: "OrderStatus: PENDING | CONFIRMED | CANCELLED\n\nOrder {\n  Long id, String customerName,\n  BigDecimal total,\n  String paymentToken,\n  List<OrderItem> items\n}" },
+  { icon: "📦", iconBg: "#0a1a0a", title: "InventoryReservation", sub: "external/inventory/InventoryReservation.java",
+    desc: "Immutable record tracking a stock hold. Carries a UUID reservationId and the map of productId→quantity held. Passed between CheckoutService and InventoryService for commit/release operations.",
+    tags: [["Record","blue"],["2-phase protocol","purple"]],
+    code: "record InventoryReservation(\n  String reservationId,  // UUID\n  Map<Long,Integer> quantities\n)" },
+  { icon: "🔥", iconBg: "#1a0a00", title: "FaultMode", sub: "demo/FaultMode.java",
+    desc: "Enum defining the four possible fault states for each stub service. NORMAL is the default. FLAKY alternates failures using AtomicInteger. SLOW respects the shared slowDelayMs setting.",
+    tags: [["Enum","orange"],["Chaos","red"]],
+    code: "enum FaultMode {\n  NORMAL,  // no-op\n  DOWN,    // always throw\n  SLOW,    // Thread.sleep(slowDelayMs)\n  FLAKY    // throws on alternating calls\n}" },
+  { icon: "📊", iconBg: "#1a0a00", title: "SagaTrace.Step", sub: "demo/SagaTrace.java",
+    desc: "Individual step record in a SagaTrace. Has a step number, operation name, status (OK/FAILED/COMPENSATED/SKIPPED/DEGRADED), and an optional detail string. Rendered colour-coded in the checkout failure UI.",
+    tags: [["Record","blue"],["5 statuses","orange"]],
+    code: "record Step(\n  String number,    // \"1\"-\"6\" or \"C\"\n  String operation,\n  Status status,\n  String detail\n)\nStatus: OK | FAILED | COMPENSATED\n      | SKIPPED | DEGRADED" },
+  { icon: "⚠️", iconBg: "#0d2340", title: "Exception Hierarchy", sub: "exception/",
+    desc: "Typed exceptions map to distinct UI messages in CheckoutController. ServiceUnavailableException optionally carries a compensation note explaining what was rolled back.",
+    tags: [["5 types","red"],["Compensation notes","purple"]],
+    code: "CheckoutException         ← persist/commit fail\nInsufficientStockException← checkAvailability\nInvalidPromotionException ← bad promo code\nPaymentFailedException    ← card declined\nServiceUnavailableException← service DOWN/timeout\n  .getCompensationNote()" }
 ];
 
-// ══════════════════════════════════════════
-//  RENDER JOURNEYS
-// ══════════════════════════════════════════
-function renderJourneys() {
-  const container = document.getElementById('journey-list');
-  JOURNEYS.forEach((j, idx) => {
-    const card = document.createElement('div');
-    card.className = 'journey-card';
-    const stepsHtml = j.steps.map(s => `
-      <li class="step-item">
-        <div class="step-badge ${s.type}">${s.badge}</div>
-        <div>
-          <div class="step-name">${s.name}</div>
-          <div class="step-desc">${s.desc}</div>
-        </div>
-      </li>`).join('');
-    card.innerHTML = `
-      <div class="journey-header" onclick="toggleJourney(this)">
-        <div class="journey-num">${idx + 1}</div>
-        <div>
-          <div class="journey-title">${j.title}</div>
-          <div class="journey-subtitle">${j.subtitle}</div>
-        </div>
-        <span class="journey-chevron">&#9658;</span>
-      </div>
-      <div class="journey-body">
-        <ul class="step-list">${stepsHtml}</ul>
-      </div>`;
-    container.appendChild(card);
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TAB SWITCHING
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-panel').classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ARCHITECTURE DIAGRAM
+   ═══════════════════════════════════════════════════════════════════════════════ */
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Build a lookup map
+const nodeMap = {};
+NODES.forEach(n => nodeMap[n.id] = n);
+
+// Node positions (mutable for dragging)
+const pos = {};
+NODES.forEach(n => { pos[n.id] = { x: n.x, y: n.y }; });
+
+// SVG viewport constants
+const NODE_W = 155, NODE_H = 44;
+
+let selectedNode = null;
+let svgEl, svgGroup, edgeGroup, nodeGroup, packetGroup;
+let viewBox = { x: 0, y: 0, w: 1000, h: 800 };
+let isPanning = false, panStart = null, vbStart = null;
+let isDragging = false, dragNode = null, dragStart = null, dragNodeStart = null;
+
+function initDiagram() {
+  svgEl = document.getElementById('diagram-svg');
+  const area = document.getElementById('diagram-area');
+  viewBox.w = area.clientWidth || 1000;
+  viewBox.h = area.clientHeight || 800;
+
+  // Defs: arrowhead
+  const defs = doc('defs');
+  const marker = doc('marker');
+  attr(marker, { id:'arrow', markerWidth:'8', markerHeight:'6',
+    refX:'8', refY:'3', orient:'auto' });
+  const poly = doc('polygon');
+  attr(poly, { points:'0 0, 8 6, 0 6', fill:'#444c56' });
+  marker.appendChild(poly);
+
+  // Per-color markers
+  const arrowColors = ['#58a6ff','#3fb950','#d29922','#bc8cff','#8b949e'];
+  arrowColors.forEach(c => {
+    const m = doc('marker');
+    const cid = 'arrow-' + c.replace('#','');
+    attr(m, { id: cid, markerWidth:'8', markerHeight:'6',
+      refX:'8', refY:'3', orient:'auto' });
+    const p = doc('polygon');
+    attr(p, { points:'0 0, 8 6, 0 6', fill: c });
+    m.appendChild(p);
+    defs.appendChild(m);
   });
-  // Open first journey by default
-  const first = container.querySelector('.journey-card');
-  if (first) {
-    first.classList.add('open');
+  defs.appendChild(marker);
+  svgEl.appendChild(defs);
+
+  // Tier background labels
+  const tierGroup = doc('g');
+  const TIERS = [
+    { label:'CLIENT', x: 30, y: 30 },
+    { label:'CONTROLLERS', x: 230, y: 30 },
+    { label:'SERVICES', x: 490, y: 30 },
+    { label:'EXTERNAL STUBS', x: 740, y: 30 },
+    { label:'INFRASTRUCTURE', x: 490, y: 520 }
+  ];
+  TIERS.forEach(t => {
+    const txt = doc('text');
+    attr(txt, { x: t.x, y: t.y, class:'tier-label' });
+    txt.textContent = t.label;
+    tierGroup.appendChild(txt);
+  });
+  svgEl.appendChild(tierGroup);
+
+  edgeGroup  = doc('g'); svgEl.appendChild(edgeGroup);
+  nodeGroup  = doc('g'); svgEl.appendChild(nodeGroup);
+  packetGroup= doc('g'); svgEl.appendChild(packetGroup);
+
+  updateViewBox();
+  renderEdges();
+  renderNodes();
+  startPacketAnimation();
+
+  // Pan (on SVG background)
+  svgEl.addEventListener('mousedown', e => {
+    if (e.target === svgEl || e.target.tagName === 'text' || e.target.classList.contains('tier-label')) {
+      isPanning = true;
+      panStart = { x: e.clientX, y: e.clientY };
+      vbStart = { ...viewBox };
+    }
+  });
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+  svgEl.addEventListener('wheel', onWheel, { passive: false });
+
+  window.addEventListener('resize', () => {
+    viewBox.w = area.clientWidth;
+    viewBox.h = area.clientHeight;
+    updateViewBox();
+  });
+}
+
+function doc(tag) { return document.createElementNS(SVG_NS, tag); }
+function attr(el, attrs) { Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v)); }
+
+function updateViewBox() {
+  attr(svgEl, { viewBox: `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}` });
+}
+
+function renderEdges() {
+  edgeGroup.innerHTML = '';
+  EDGES.forEach(e => {
+    const fromNode = nodeMap[e.from], toNode = nodeMap[e.to];
+    if (!fromNode || !toNode) return;
+    const fx = pos[e.from].x + NODE_W, fy = pos[e.from].y + NODE_H/2;
+    const tx = pos[e.to].x,           ty = pos[e.to].y + NODE_H/2;
+
+    const cid = 'arrow-' + (e.color||'#58a6ff').replace('#','');
+    const path = doc('path');
+    const cx = (fx + tx) / 2;
+    attr(path, {
+      d: `M ${fx} ${fy} C ${cx} ${fy}, ${cx} ${ty}, ${tx} ${ty}`,
+      class: 'edge-line',
+      stroke: e.color || '#444c56',
+      'marker-end': `url(#${cid})`
+    });
+    edgeGroup.appendChild(path);
+
+    // Edge label
+    if (e.label) {
+      const lbl = doc('text');
+      attr(lbl, { x: cx, y: (fy + ty)/2 - 5, class: 'edge-label' });
+      lbl.textContent = e.label;
+      edgeGroup.appendChild(lbl);
+    }
+  });
+}
+
+function renderNodes() {
+  nodeGroup.innerHTML = '';
+  NODES.forEach(n => {
+    const g = doc('g');
+    attr(g, { class: 'node-group' + (selectedNode === n.id ? ' selected' : '') });
+    g.dataset.id = n.id;
+
+    const rect = doc('rect');
+    attr(rect, {
+      x: pos[n.id].x, y: pos[n.id].y,
+      width: NODE_W, height: NODE_H,
+      rx: 8, ry: 8,
+      fill: n.color, stroke: n.stroke,
+      'stroke-width': selectedNode === n.id ? '2.5' : '1.5',
+      class: 'node-rect'
+    });
+    g.appendChild(rect);
+
+    const lbl = doc('text');
+    attr(lbl, {
+      x: pos[n.id].x + NODE_W/2,
+      y: pos[n.id].y + NODE_H/2 - (n.sub ? 6 : 0),
+      class: 'node-label'
+    });
+    lbl.textContent = n.label;
+    g.appendChild(lbl);
+
+    if (n.sub) {
+      const sub = doc('text');
+      attr(sub, {
+        x: pos[n.id].x + NODE_W/2,
+        y: pos[n.id].y + NODE_H/2 + 10,
+        class: 'node-sub'
+      });
+      sub.textContent = n.sub;
+      g.appendChild(sub);
+    }
+
+    // Mouse events
+    g.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      isDragging = false;
+      dragNode = n.id;
+      const svgPt = clientToSVG(e.clientX, e.clientY);
+      dragStart = svgPt;
+      dragNodeStart = { ...pos[n.id] };
+    });
+
+    g.addEventListener('click', e => {
+      if (!isDragging) {
+        e.stopPropagation();
+        selectNode(n.id);
+      }
+    });
+
+    nodeGroup.appendChild(g);
+  });
+}
+
+function selectNode(id) {
+  selectedNode = id;
+  const n = nodeMap[id];
+  document.getElementById('side-placeholder').style.display = 'none';
+  const sc = document.getElementById('side-content');
+  sc.classList.add('visible');
+
+  document.getElementById('sp-type').textContent = n.type;
+  document.getElementById('sp-title').textContent = n.label;
+  document.getElementById('sp-desc').textContent = n.desc;
+
+  const propsEl = document.getElementById('sp-props');
+  propsEl.innerHTML = '';
+  if (n.props && n.props.length) {
+    document.getElementById('sp-props-wrap').style.display = '';
+    n.props.forEach(([k,v]) => {
+      const kEl = document.createElement('div');
+      kEl.className = 'prop-key'; kEl.textContent = k;
+      const vEl = document.createElement('div');
+      vEl.className = 'prop-val'; vEl.textContent = v;
+      propsEl.appendChild(kEl);
+      propsEl.appendChild(vEl);
+    });
+  } else {
+    document.getElementById('sp-props-wrap').style.display = 'none';
+  }
+
+  const codeEl = document.getElementById('sp-code');
+  if (n.code) {
+    document.getElementById('sp-code-wrap').style.display = '';
+    codeEl.textContent = n.code;
+  } else {
+    document.getElementById('sp-code-wrap').style.display = 'none';
+  }
+
+  renderNodes();
+}
+
+function onMouseMove(e) {
+  if (dragNode) {
+    const svgPt = clientToSVG(e.clientX, e.clientY);
+    const dx = svgPt.x - dragStart.x;
+    const dy = svgPt.y - dragStart.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isDragging = true;
+    if (isDragging) {
+      pos[dragNode].x = dragNodeStart.x + dx;
+      pos[dragNode].y = dragNodeStart.y + dy;
+      renderEdges();
+      renderNodes();
+    }
+    return;
+  }
+  if (isPanning && panStart) {
+    const dx = (e.clientX - panStart.x) * (viewBox.w / svgEl.clientWidth);
+    const dy = (e.clientY - panStart.y) * (viewBox.h / svgEl.clientHeight);
+    viewBox.x = vbStart.x - dx;
+    viewBox.y = vbStart.y - dy;
+    updateViewBox();
   }
 }
 
-function toggleJourney(header) {
-  const card = header.closest('.journey-card');
-  card.classList.toggle('open');
+function onMouseUp(e) {
+  dragNode = null;
+  isPanning = false;
+  panStart = null;
 }
 
-// ══════════════════════════════════════════
-//  RENDER COMPONENTS
-// ══════════════════════════════════════════
-function renderComps() {
+function onWheel(e) {
+  e.preventDefault();
+  const scale = e.deltaY > 0 ? 1.1 : 0.91;
+  const rect = svgEl.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width  * viewBox.w + viewBox.x;
+  const my = (e.clientY - rect.top)  / rect.height * viewBox.h + viewBox.y;
+  viewBox.w *= scale; viewBox.h *= scale;
+  viewBox.x = mx - (mx - viewBox.x) * scale;
+  viewBox.y = my - (my - viewBox.y) * scale;
+  updateViewBox();
+}
+
+function clientToSVG(cx, cy) {
+  const rect = svgEl.getBoundingClientRect();
+  return {
+    x: (cx - rect.left) / rect.width  * viewBox.w + viewBox.x,
+    y: (cy - rect.top)  / rect.height * viewBox.h + viewBox.y
+  };
+}
+
+/* ─── Packet animation ───────────────────────────────────────── */
+function startPacketAnimation() {
+  const animate = () => {
+    const e = EDGES[Math.floor(Math.random() * EDGES.length)];
+    const fromN = nodeMap[e.from], toN = nodeMap[e.to];
+    if (!fromN || !toN) return;
+
+    const circle = doc('circle');
+    attr(circle, { r: '4', fill: e.color || '#58a6ff', opacity: '0' });
+    packetGroup.appendChild(circle);
+
+    const fx = pos[e.from].x + NODE_W, fy = pos[e.from].y + NODE_H/2;
+    const tx = pos[e.to].x,           ty = pos[e.to].y + NODE_H/2;
+    const cx = (fx + tx) / 2;
+
+    const duration = 900 + Math.random() * 600;
+    const start = performance.now();
+
+    const step = (now) => {
+      const t = Math.min((now - start) / duration, 1);
+      // Cubic bezier: P = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+      const u = 1 - t;
+      const bx = u*u*fx + 2*u*t*cx + t*t*tx;
+      const by = u*u*fy + 2*u*t*(fy+ty)/2 + t*t*ty;
+      const opacity = t < 0.1 ? t/0.1 : t > 0.9 ? (1-t)/0.1 : 1;
+      attr(circle, { cx: bx, cy: by, opacity });
+      if (t < 1) requestAnimationFrame(step);
+      else circle.remove();
+    };
+    requestAnimationFrame(step);
+  };
+
+  setInterval(animate, 400);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   JOURNEYS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function initJourneys() {
+  const selector = document.getElementById('journey-selector');
+  const bodies   = document.getElementById('journey-bodies');
+
+  JOURNEYS.forEach((j, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'journey-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = j.name;
+    btn.onclick = () => {
+      document.querySelectorAll('.journey-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.journey-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('jc-' + j.id).classList.add('active');
+    };
+    selector.appendChild(btn);
+
+    const div = document.createElement('div');
+    div.className = 'journey-content' + (i === 0 ? ' active' : '');
+    div.id = 'jc-' + j.id;
+
+    div.innerHTML = `
+      <div class="journey-header">
+        <h3>${j.name}</h3>
+        <p>${j.desc}</p>
+      </div>
+      <div class="steps-list">
+        ${j.steps.map((s, si) => `
+          <div class="step-item">
+            <div class="step-line"></div>
+            <div class="step-bubble" style="background:${s.color}22;border:2px solid ${s.color};color:${s.color}">${s.num}</div>
+            <div class="step-body">
+              <div class="step-name">${s.name}</div>
+              <div class="step-desc">${s.desc}</div>
+              ${s.comp ? `<div class="step-comp"><strong>Compensation:</strong> <code style="font-family:monospace;font-size:0.76rem">${s.comp.replace(/\n/g,'<br>')}</code></div>` : ''}
+              ${s.code ? `<pre class="step-code">${s.code}</pre>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    bodies.appendChild(div);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function initComps() {
   const grid = document.getElementById('comp-grid');
   COMPS.forEach(c => {
-    const tags = c.tags.map(t => `<span class="comp-tag">${t}</span>`).join('');
     const card = document.createElement('div');
-    card.className = `comp-card layer-${c.layer}`;
+    card.className = 'card';
     card.innerHTML = `
-      <div class="comp-layer-tag">${c.layer.toUpperCase()}</div>
-      <div class="comp-name">${c.name}</div>
-      <div class="comp-file">${c.file}</div>
-      <div class="comp-desc">${c.desc}</div>
-      <div class="comp-tags">${tags}</div>`;
+      <div class="card-header">
+        <div class="card-icon" style="background:${c.iconBg}">${c.icon}</div>
+        <div class="card-title-group">
+          <div class="card-title">${c.title}</div>
+          <div class="card-subtitle">${c.sub}</div>
+        </div>
+      </div>
+      <div class="card-desc">${c.desc}</div>
+      <div class="tag-row">${c.tags.map(([t,cls]) => `<span class="tag ${cls}">${t}</span>`).join('')}</div>
+      ${c.code ? `<pre class="card-code">${c.code}</pre>` : ''}
+    `;
     grid.appendChild(card);
   });
 }
 
-// ══════════════════════════════════════════
-//  RENDER TOPICS
-// ══════════════════════════════════════════
-function renderTopics() {
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TOPICS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function initTopics() {
   const grid = document.getElementById('topic-grid');
   TOPICS.forEach(t => {
-    const meta = t.meta.map(m =>
-      `<span class="topic-kv"><span>${m.k}: </span><strong>${m.v}</strong></span>`
-    ).join('');
     const card = document.createElement('div');
-    card.className = 'topic-card';
+    card.className = 'card';
     card.innerHTML = `
-      <div class="topic-category">${t.category}</div>
-      <div class="topic-name">${t.name}</div>
-      <div class="topic-desc">${t.desc}</div>
-      <div class="topic-meta">${meta}</div>`;
+      <div class="card-header">
+        <div class="card-icon" style="background:${t.iconBg}">${t.icon}</div>
+        <div class="card-title-group">
+          <div class="card-title">${t.title}</div>
+          <div class="card-subtitle">${t.sub}</div>
+        </div>
+      </div>
+      <div class="card-desc">${t.desc}</div>
+      <div class="tag-row">${t.tags.map(([tag,cls]) => `<span class="tag ${cls}">${tag}</span>`).join('')}</div>
+      ${t.code ? `<pre class="card-code">${t.code}</pre>` : ''}
+    `;
     grid.appendChild(card);
   });
 }
 
-// ══════════════════════════════════════════
-//  TAB SWITCHING
-// ══════════════════════════════════════════
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
-  });
+/* ═══════════════════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  initDiagram();
+  initJourneys();
+  initComps();
+  initTopics();
 });
-
-// ══════════════════════════════════════════
-//  ARCH DIAGRAM NODE CLICK
-// ══════════════════════════════════════════
-const NODE_MAP = {
-  'browser':         'sn-browser',
-  'productctrl':     'sn-productctrl',
-  'cartctrl':        'sn-cartctrl',
-  'checkoutctrl':    'sn-checkoutctrl',
-  'democontroller':  'sn-democontroller',
-  'productservice':  'sn-productservice',
-  'orderservice':    'sn-orderservice',
-  'checkoutservice': 'sn-checkoutservice',
-  'demofaultconfig': 'sn-demofaultconfig',
-  'inventory':       'sn-inventory',
-  'payment':         'sn-payment',
-  'promotion':       'sn-promotion',
-  'cartpromotion':   'sn-cartpromotion',
-  'coupon':          'sn-coupon',
-  'h2':              'sn-h2',
-  'inmemory':        'sn-inmemory',
-  'session':         'sn-session',
-};
-
-document.querySelectorAll('.arch-node').forEach(node => {
-  node.addEventListener('click', () => {
-    const key = node.dataset.node;
-    const snId = NODE_MAP[key];
-    if (!snId) return;
-
-    // Deselect all
-    document.querySelectorAll('.arch-node').forEach(n => n.classList.remove('selected'));
-    node.classList.add('selected');
-
-    // Hide placeholder
-    document.getElementById('sidebar-placeholder').style.display = 'none';
-
-    // Show correct sidebar node
-    document.querySelectorAll('.sidebar-node').forEach(sn => sn.classList.remove('active'));
-    const snEl = document.getElementById(snId);
-    if (snEl) snEl.classList.add('active');
-  });
-});
-
-// ══════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════
-renderJourneys();
-renderComps();
-renderTopics();
 </script>
 </body>
 </html>
