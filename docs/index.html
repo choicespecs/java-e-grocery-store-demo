@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fresh Groceries — Architecture Learning Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --accent3: #d2a8ff;
+      --accent4: #ffa657;
+      --accent5: #ff7b72;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .hero {
+      max-width: 780px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 0.6rem;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.6;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 3rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .chip.java   { border-color: #f89820; color: #f89820; }
+    .chip.spring { border-color: var(--accent2); color: var(--accent2); }
+    .chip.db     { border-color: #79c0ff; color: #79c0ff; }
+    .chip.web    { border-color: var(--accent3); color: var(--accent3); }
+    .chip.build  { border-color: var(--accent4); color: var(--accent4); }
+    .chip.pattern{ border-color: var(--accent5); color: var(--accent5); }
+
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; opacity: 0.8;
+    }
+
+    .cta-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent3));
+    }
+
+    .cta-card h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .cta-card p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #1f6feb, #388bfd);
+      color: #fff;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .feature {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: left;
+    }
+
+    .feature-icon {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature h3 {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .feature p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    footer {
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="badge">Interactive Learning Guide</div>
+    <h1>Fresh Groceries<br>Architecture Guide</h1>
+    <p class="subtitle">
+      Explore the distributed-systems patterns behind a Spring Boot e-grocery checkout 
+      flow — Saga, graceful degradation, idempotency, and chaos engineering — 
+      through interactive diagrams and annotated walkthroughs.
+    </p>
+
+    <div class="chips">
+      <span class="chip java"><span class="dot"></span>Java 17</span>
+      <span class="chip spring"><span class="dot"></span>Spring Boot 3.4</span>
+      <span class="chip spring"><span class="dot"></span>Spring MVC</span>
+      <span class="chip spring"><span class="dot"></span>Spring Data JPA</span>
+      <span class="chip web"><span class="dot"></span>Thymeleaf</span>
+      <span class="chip web"><span class="dot"></span>Bootstrap 5.3</span>
+      <span class="chip db"><span class="dot"></span>H2 In-Memory DB</span>
+      <span class="chip build"><span class="dot"></span>Maven</span>
+      <span class="chip pattern"><span class="dot"></span>Saga Pattern</span>
+      <span class="chip pattern"><span class="dot"></span>Chaos Engineering</span>
+    </div>
+
+    <div class="cta-card">
+      <h2>Explore the Architecture</h2>
+      <p>
+        Click through clickable SVG diagrams, animated data flows, step-by-step saga walkthroughs, 
+        component reference cards, and a full topic catalogue — all in one single-page app.
+      </p>
+      <a href="learning-guide.html" class="btn btn-primary">
+        Open Learning Guide &rarr;
+      </a>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">&#9741;</div>
+          <h3>Architecture Diagram</h3>
+          <p>Clickable SVG nodes with animated data packets and side-panel details</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#8644;</div>
+          <h3>Data Journeys</h3>
+          <p>Step-by-step checkout saga walkthroughs with compensation paths</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#9783;</div>
+          <h3>Component Cards</h3>
+          <p>Every service, controller, and infrastructure piece explained</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#9889;</div>
+          <h3>Fault Modes</h3>
+          <p>Chaos engineering scenarios: DOWN, SLOW, FLAKY, and timeout</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Spring Boot 3 / Java 17 &mdash; E-Grocery Store Demo &mdash;
+      <a href="https://github.com/choicespecs/java-e-grocery-store-demo" 
+         style="color: var(--accent); text-decoration: none;" target="_blank">
+        View on GitHub
+      </a>
+    </footer>
+  </div>
+</body>
+</html>
