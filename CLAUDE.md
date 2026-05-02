@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository
+
+GitHub username: **choicespecs**
+GitHub URL: `https://github.com/choicespecs/java-e-grocery-store-demo`
+GitHub Pages: `https://choicespecs.github.io/java-e-grocery-store-demo/`
+
 ## Commands
 
 ```bash

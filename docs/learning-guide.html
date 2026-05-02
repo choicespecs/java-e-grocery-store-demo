@@ -545,10 +545,10 @@
 <nav>
   <a class="nav-brand" href="index.html">E-<span>Grocery</span> Demo</a>
   <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('arch')">Architecture</button>
-    <button class="tab-btn" onclick="showTab('journeys')">Data Journeys</button>
-    <button class="tab-btn" onclick="showTab('comp')">Components</button>
-    <button class="tab-btn" onclick="showTab('topics')">Topics</button>
+    <button class="tab-btn active" onclick="showTab('arch', this)">Architecture</button>
+    <button class="tab-btn" onclick="showTab('journeys', this)">Data Journeys</button>
+    <button class="tab-btn" onclick="showTab('comp', this)">Components</button>
+    <button class="tab-btn" onclick="showTab('topics', this)">Topics</button>
   </div>
   <a class="nav-back" href="index.html">
     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -624,7 +624,7 @@ const NODES = [
   /* ── Browser / Entry ─────────────────────────────────── */
   {
     id: "browser", label: "Browser", sub: "HTTP Client",
-    tier: "client", x: 100, y: 260,
+    tier: "client", x: 30, y: 250,
     color: "#1c2128", stroke: "#58a6ff",
     type: "Client", desc: "The user's web browser. Sends HTTP GET/POST requests to Spring MVC controllers and renders Thymeleaf HTML responses. Session state (the Cart) lives here as an HTTP session cookie pointing to a server-side @SessionScope bean.",
     props: [["Protocol","HTTP/1.1"], ["Session","Cookie-based (JSESSIONID)"], ["Rendering","Thymeleaf server-side"]],
@@ -634,7 +634,7 @@ const NODES = [
   /* ── Controllers ─────────────────────────────────────── */
   {
     id: "product-ctrl", label: "ProductController", sub: "GET /",
-    tier: "controller", x: 300, y: 120,
+    tier: "controller", x: 220, y: 70,
     color: "#0d2340", stroke: "#58a6ff",
     type: "Controller", desc: "Handles the product catalogue pages. Lists all products grouped by category, supports search/filter. Read-only — no session writes. CartModelAdvice injects cartItemCount and categories into the model for every request automatically.",
     props: [["Routes","GET /"], ["Dependencies","ProductService, CategoryRepository"], ["Template","index.html"]],
@@ -642,7 +642,7 @@ const NODES = [
   },
   {
     id: "cart-ctrl", label: "CartController", sub: "POST /cart/**",
-    tier: "controller", x: 300, y: 260,
+    tier: "controller", x: 220, y: 185,
     color: "#0d2340", stroke: "#58a6ff",
     type: "Controller", desc: "All cart mutations: add, update, remove, clear. Every mutation calls refreshDiscounts() which re-evaluates both discount streams (CartPromotionService + CouponService). Quantities are capped to product.stockQuantity. The coupon engine is gracefully degraded — failure sets a couponServiceDown flag rather than aborting.",
     props: [["Routes","GET /cart, POST /cart/add, POST /cart/update, POST /cart/remove, POST /cart/clear"], ["Session bean","Cart (@SessionScope)"], ["Template","cart.html"]],
@@ -650,7 +650,7 @@ const NODES = [
   },
   {
     id: "checkout-ctrl", label: "CheckoutController", sub: "POST /checkout",
-    tier: "controller", x: 300, y: 400,
+    tier: "controller", x: 220, y: 300,
     color: "#0d2340", stroke: "#58a6ff",
     type: "Controller", desc: "Invokes the checkout saga and maps each exception type to a distinct UI message. A fresh UUID idempotency key is generated on every GET /checkout form load. On success, the cart is cleared and the browser redirects to the confirmation page. The SagaTrace accumulated during a failed saga is attached to the model for colour-coded display.",
     props: [["Routes","GET /checkout, POST /checkout, GET /checkout/confirmation/{id}"], ["Idempotency","UUID per form load"], ["Exceptions caught","5 distinct types"]],
@@ -658,7 +658,7 @@ const NODES = [
   },
   {
     id: "demo-ctrl", label: "DemoController", sub: "GET/POST /demo",
-    tier: "controller", x: 300, y: 540,
+    tier: "controller", x: 220, y: 415,
     color: "#0d2340", stroke: "#d29922",
     type: "Controller", desc: "Chaos engineering control panel. Reads and writes DemoFaultConfig. Supports one-click presets (25+) that configure fault modes for all stubs simultaneously. Presets cover: payment-down, payment-slow, payment-timeout, payment-flaky, inventory failures at each saga step, promotion degradation modes, and coupon engine faults.",
     props: [["Route","GET /demo, POST /demo, POST /demo/preset, POST /demo/reset"], ["Presets","25+ one-click scenarios"], ["Fault targets","Inventory (3 points), Payment, Promotion, Coupon"]],
@@ -666,7 +666,7 @@ const NODES = [
   },
   {
     id: "cart-advice", label: "CartModelAdvice", sub: "@ControllerAdvice",
-    tier: "controller", x: 300, y: 660,
+    tier: "controller", x: 220, y: 530,
     color: "#0d2340", stroke: "#8b949e",
     type: "ControllerAdvice", desc: "Injects cartItemCount and categories into every Thymeleaf model automatically using @ModelAttribute. This avoids duplicating that logic in every controller and keeps templates DRY. Runs for all @Controller classes before the handler method returns.",
     props: [["Scope","All controllers"], ["Injects","cartItemCount, categories"], ["Mechanism","@ModelAttribute methods"]],
@@ -676,23 +676,23 @@ const NODES = [
   /* ── Services ────────────────────────────────────────── */
   {
     id: "checkout-svc", label: "CheckoutService", sub: "Saga Orchestrator",
-    tier: "service", x: 560, y: 340,
+    tier: "service", x: 420, y: 265,
     color: "#1a0a2e", stroke: "#bc8cff",
     type: "Service (Saga)", desc: "The most important class in the codebase. Orchestrates the checkout saga — a sequence of 6 steps across 3 external services. Intentionally NOT @Transactional because the saga spans external calls that cannot be wrapped in a DB transaction. Payment runs on a dedicated daemon-thread executor with a configurable timeout deadline. Each step logs its outcome to SagaTrace.",
     props: [["Pattern","Saga (orchestration)"], ["Thread model","Payment on dedicated executor"], ["Payment timeout","Configurable (default 3000ms)"], ["Transactions","Per-step @Transactional only"]],
-    code: "// Step 4: Payment on dedicated thread\nFuture<PaymentResult> f =\n  paymentExecutor.submit(\n    () -> paymentService.processPayment(req));\ntry {\n  payment = f.get(timeoutMs,\n    TimeUnit.MILLISECONDS);\n} catch (TimeoutException e) {\n  f.cancel(true);\n  inventoryService.releaseReservation(res);\n  throw new ServiceUnavailableException(...);\n}"
+    code: "// Step 4: Payment on dedicated thread\nFuture&lt;PaymentResult&gt; f =\n  paymentExecutor.submit(\n    () -> paymentService.processPayment(req));\ntry {\n  payment = f.get(timeoutMs,\n    TimeUnit.MILLISECONDS);\n} catch (TimeoutException e) {\n  f.cancel(true);\n  inventoryService.releaseReservation(res);\n  throw new ServiceUnavailableException(...);\n}"
   },
   {
     id: "product-svc", label: "ProductService", sub: "Catalogue queries",
-    tier: "service", x: 560, y: 140,
+    tier: "service", x: 420, y: 100,
     color: "#111d0a", stroke: "#3fb950",
     type: "Service", desc: "Thin service wrapping ProductRepository. Provides search, category filter, and stock display queries. Does not interact with the external inventory service — stock quantities shown in the catalogue come from the H2 DB (display cache), not from StubInventoryService.",
     props: [["Role","Catalogue read queries"], ["Stock source","H2 DB (display cache)"], ["Search","Name LIKE query"]],
-    code: "@Service\npublic class ProductService {\n  public List<Product> findAll() {\n    return productRepository.findAll();\n  }\n  public List<Product> search(String q) {\n    return productRepository\n      .findByNameContainingIgnoreCase(q);\n  }\n}"
+    code: "@Service\npublic class ProductService {\n  public List&lt;Product&gt; findAll() {\n    return productRepository.findAll();\n  }\n  public List&lt;Product&gt; search(String q) {\n    return productRepository\n      .findByNameContainingIgnoreCase(q);\n  }\n}"
   },
   {
     id: "order-svc", label: "OrderService", sub: "@Transactional writes",
-    tier: "service", x: 560, y: 480,
+    tier: "service", x: 420, y: 440,
     color: "#111d0a", stroke: "#3fb950",
     type: "Service", desc: "Handles order persistence and the post-order DB stock decrement. createOrder() is @Transactional and writes Order + OrderItems in one DB transaction. decrementStock() calls ProductRepository.decrementStock() which uses a @Modifying JPQL UPDATE to atomically reduce stockQuantity. cancelOrder() marks the order CANCELLED.",
     props: [["createOrder","@Transactional — writes Order + OrderItems"], ["cancelOrder","Sets status = CANCELLED"], ["Stock","Decrements Product.stockQuantity after commit"]],
@@ -702,15 +702,15 @@ const NODES = [
   /* ── External Services ───────────────────────────────── */
   {
     id: "inventory-stub", label: "StubInventoryService", sub: "Warehouse simulation",
-    tier: "external", x: 820, y: 200,
+    tier: "external", x: 620, y: 100,
     color: "#1a1000", stroke: "#d29922",
     type: "External Stub", desc: "Simulates a warehouse inventory system. Maintains two ConcurrentHashMaps: available (productId→units) and reservations (reservationId→quantities). Implements a two-phase reserve→commit protocol to prevent overselling. Three independent fault injection points: checkAvailability, reserveStock, commitReservation. releaseReservation is never faulted — compensations must be reliable.",
     props: [["State","ConcurrentHashMap (in-memory)"], ["Protocol","2-phase: reserve → commit/release"], ["Fault points","3 (check, reserve, commit)"], ["Seeded by","DataInitializer on startup"]],
-    code: "// Two-phase stock lifecycle:\n// available → reserved (reserveStock)\n// reserved  → gone     (commitReservation)\n// reserved  → available (releaseReservation)\n\npublic InventoryReservation reserveStock(\n    Map<Long,Integer> requested) {\n  String id = UUID.randomUUID().toString();\n  requested.forEach((k,v) ->\n    available.merge(k, -v, Integer::sum));\n  reservations.put(id, new HashMap<>(requested));\n  return new InventoryReservation(id, requested);\n}"
+    code: "// Two-phase stock lifecycle:\n// available → reserved (reserveStock)\n// reserved  → gone     (commitReservation)\n// reserved  → available (releaseReservation)\n\npublic InventoryReservation reserveStock(\n    Map&lt;Long,Integer&gt; requested) {\n  String id = UUID.randomUUID().toString();\n  requested.forEach((k,v) ->\n    available.merge(k, -v, Integer::sum));\n  reservations.put(id, new HashMap&lt;&gt;(requested));\n  return new InventoryReservation(id, requested);\n}"
   },
   {
     id: "payment-stub", label: "StubPaymentService", sub: "Gateway simulation",
-    tier: "external", x: 820, y: 360,
+    tier: "external", x: 620, y: 220,
     color: "#1a1000", stroke: "#d29922",
     type: "External Stub", desc: "Simulates a payment gateway (Stripe-like). Supports test card numbers for decline scenarios. Implements idempotency: a second request with the same idempotencyKey returns the original result without re-charging. The idempotency toggle can be disabled in the demo panel to observe double-charging. Runs on a dedicated thread inside CheckoutService with a configurable timeout.",
     props: [["Idempotency","UUID key per form load; ConcurrentHashMap cache"], ["Test cards","4111...=success, 4000...0002=decline, 4000...9995=insufficient, 4000...0127=bad CVC"], ["Thread","Dedicated daemon executor in CheckoutService"]],
@@ -718,7 +718,7 @@ const NODES = [
   },
   {
     id: "promotion-stub", label: "StubPromotionService", sub: "Promo code engine",
-    tier: "external", x: 820, y: 500,
+    tier: "external", x: 620, y: 340,
     color: "#1a1000", stroke: "#d29922",
     type: "External Stub", desc: "Validates promo codes and calculates discounts. Supports percentage and fixed-amount discounts. When DOWN/FLAKY, CheckoutService decides based on the promotionGracefulDegradation flag whether to treat the failure as hard-stop or gracefully skip the discount and continue — demonstrating a key architectural design decision about critical vs non-critical dependencies.",
     props: [["Codes","SAVE10 (10%), SAVE20 (20%), FLAT5 ($5), WELCOME (15%), FRESH ($4), BIG25 (25%), HALFOFF (50%)"], ["Graceful degrade","Configurable — skip discount or hard-fail"], ["Fault modes","NORMAL, DOWN, SLOW, FLAKY"]],
@@ -726,7 +726,7 @@ const NODES = [
   },
   {
     id: "coupon-stub", label: "StubCouponService", sub: "Offer engine",
-    tier: "external", x: 820, y: 640,
+    tier: "external", x: 620, y: 460,
     color: "#1a1000", stroke: "#d29922",
     type: "External Stub", desc: "Evaluates automatic coupon offers based on cart contents — no code required. Supports BOGO (Croissants), bundle deals (Spinach+Yogurt, Bread+Cheese, Tea+OJ), multi-buy quantity discounts (Muffins, Cold Brew, Bagels), and spend threshold ($20+). getOfferCatalog() is never fault-injected so the UI always shows the offer list even when the engine is DOWN.",
     props: [["Offer types","BOGO, BUNDLE, QUANTITY_OFF, SPEND_THRESHOLD"], ["Catalog","Always returns (no fault injection)"], ["Evaluate","Subject to DOWN/SLOW/FLAKY"], ["Cart integration","CartController.refreshDiscounts()"]],
@@ -734,7 +734,7 @@ const NODES = [
   },
   {
     id: "cartpromo-stub", label: "StubCartPromotionService", sub: "Auto quantity deals",
-    tier: "external", x: 820, y: 780,
+    tier: "external", x: 620, y: 575,
     color: "#1a1000", stroke: "#d29922",
     type: "External Stub", desc: "Evaluates automatic quantity-based cart deals with no code required. Called on every cart mutation and on viewCart. Never fault-injected — cart deal evaluation must be reliable. Active deals: Whole Milk (qty≥3: buy 2 get 1 free), Organic Apples (qty≥4: $2 off), Bananas (qty≥3: $1 off), Cheddar Cheese (qty≥2: $1.50 off), Sparkling Water (qty≥2: $2 off), Orange Juice (qty≥3: $2 off).",
     props: [["Deals","6 active quantity-based deals"], ["Trigger","Automatic — no code needed"], ["Fault injection","None — always reliable"], ["Evaluation","Every cart mutation"]],
@@ -744,7 +744,7 @@ const NODES = [
   /* ── Infrastructure ──────────────────────────────────── */
   {
     id: "h2-db", label: "H2 Database", sub: "In-memory / JPA",
-    tier: "infra", x: 560, y: 680,
+    tier: "infra", x: 620, y: 650,
     color: "#0a1a0a", stroke: "#3fb950",
     type: "Infrastructure", desc: "H2 in-memory relational database. Stores Categories, Products, Orders, and OrderItems. Seeded by DataInitializer on every startup. Accessible at /h2-console while running (JDBC URL: jdbc:h2:mem:grocerydb, user: sa, no password). Product.stockQuantity is a display cache — the authoritative inventory lives in StubInventoryService's ConcurrentHashMap.",
     props: [["Type","H2 in-memory"], ["Tables","Category, Product, Order, OrderItem"], ["Console","/h2-console (JDBC: jdbc:h2:mem:grocerydb)"], ["Stock role","Display cache only — authoritative is in-memory stub"]],
@@ -752,7 +752,7 @@ const NODES = [
   },
   {
     id: "fault-config", label: "DemoFaultConfig", sub: "@Component singleton",
-    tier: "infra", x: 560, y: 560,
+    tier: "infra", x: 420, y: 650,
     color: "#1a0a00", stroke: "#d29922",
     type: "Infrastructure", desc: "Singleton @Component holding volatile fault-injection settings for every stub service. All fields are volatile for thread visibility — reads/writes are visible across the servlet thread and payment executor thread without synchronization. Stubs read this bean on each invocation. DemoController writes it.",
     props: [["Inventory faults","3 independent (check, reserve, commit)"], ["Payment faults","Mode + idempotency toggle + timeout (ms)"], ["Promotion faults","Mode + graceful degradation toggle"], ["Coupon faults","Mode"], ["Shared","slowDelayMs, paymentTimeoutMs"]],
@@ -760,7 +760,7 @@ const NODES = [
   },
   {
     id: "data-init", label: "DataInitializer", sub: "ApplicationRunner",
-    tier: "infra", x: 560, y: 800,
+    tier: "infra", x: 220, y: 650,
     color: "#0a1a0a", stroke: "#3fb950",
     type: "Infrastructure", desc: "Seeds the H2 database and StubInventoryService on every application startup. Implements ApplicationRunner so it runs after the Spring context is fully initialized. Seeds 4 categories and 16 products in one @Transactional method. After saving each Product, mirrors its stock to StubInventoryService.initializeStock() so both sources of truth start in sync.",
     props: [["Trigger","ApplicationRunner.run() after context init"], ["Scope","@Transactional — all rows committed atomically"], ["Products","16 across 4 categories"], ["Edge cases","Free Range Eggs (stock=0), Roma Tomatoes/Croissants (stock≤3)"]],
@@ -815,7 +815,7 @@ const JOURNEYS = [
         code: "reservation = inventoryService\n  .reserveStock(quantities);\ntrace.ok(\"3\", \"reserveStock\");" },
       { num: "7", name: "Step 4 — processPayment", color: "#3fb950",
         desc: "SIDE EFFECT: Payment call runs on a dedicated daemon thread via ExecutorService. CheckoutService blocks with Future.get(timeoutMs). StubPaymentService checks idempotency cache, applies fault mode, validates card number, generates PAY-XXXXXXXX token.",
-        code: "Future<PaymentResult> f =\n  paymentExecutor.submit(\n    () -> paymentService.processPayment(req));\npayment = f.get(timeoutMs, MILLISECONDS);\ntrace.ok(\"4\", \"processPayment → \" +\n  payment.paymentToken());" },
+        code: "Future&lt;PaymentResult&gt; f =\n  paymentExecutor.submit(\n    () -> paymentService.processPayment(req));\npayment = f.get(timeoutMs, MILLISECONDS);\ntrace.ok(\"4\", \"processPayment → \" +\n  payment.paymentToken());" },
       { num: "8", name: "Step 5 — createOrder", color: "#3fb950",
         desc: "OrderService.createOrder() is @Transactional. Writes Order entity + OrderItem rows for each cart item. Also decrements Product.stockQuantity in H2 via a @Modifying query (display cache update). On failure, compensation fires: refund + releaseReservation.",
         code: "order = orderService.createOrder(\n  cart, promotion, payment, finalTotal);\ntrace.ok(\"5\", \"createOrder → #\"\n  + order.getId());" },
@@ -1019,19 +1019,19 @@ const TOPICS = [
   { icon: "🎫", iconBg: "#1a1000", title: "CouponResult", sub: "external/coupon/CouponResult.java",
     desc: "Result from CouponService.evaluate(). Contains the list of active CouponOffer objects and total coupon discount. CouponResult.none() on engine failure.",
     tags: [["Record","blue"],["Automatic offers","green"]],
-    code: "record CouponResult(\n  List<CouponOffer> offers,\n  BigDecimal totalDiscount\n)\nCouponResult.none() → empty, ZERO" },
+    code: "record CouponResult(\n  List&lt;CouponOffer&gt; offers,\n  BigDecimal totalDiscount\n)\nCouponResult.none() → empty, ZERO" },
   { icon: "🎁", iconBg: "#1a1000", title: "CartPromotionResult", sub: "external/cartpromotion/CartPromotionResult.java",
     desc: "Result from CartPromotionService.evaluate(). Contains the list of active CartDeal objects and total deal discount. Never null — always returns a result.",
     tags: [["Record","blue"],["Quantity deals","green"]],
-    code: "record CartPromotionResult(\n  List<CartDeal> deals,\n  BigDecimal totalDiscount\n)" },
+    code: "record CartPromotionResult(\n  List&lt;CartDeal&gt; deals,\n  BigDecimal totalDiscount\n)" },
   { icon: "📋", iconBg: "#111d0a", title: "Order / OrderItem", sub: "domain/Order.java + OrderItem.java",
     desc: "JPA entities. Order holds customer details, total, payment token, OrderStatus, and a list of OrderItems. OrderItem is a denormalized snapshot of product name, price, and quantity at time of order.",
     tags: [["@Entity","green"],["JPA","blue"],["Snapshot","orange"]],
-    code: "OrderStatus: PENDING | CONFIRMED | CANCELLED\n\nOrder {\n  Long id, String customerName,\n  BigDecimal total,\n  String paymentToken,\n  List<OrderItem> items\n}" },
+    code: "OrderStatus: PENDING | CONFIRMED | CANCELLED\n\nOrder {\n  Long id, String customerName,\n  BigDecimal total,\n  String paymentToken,\n  List&lt;OrderItem&gt; items\n}" },
   { icon: "📦", iconBg: "#0a1a0a", title: "InventoryReservation", sub: "external/inventory/InventoryReservation.java",
     desc: "Immutable record tracking a stock hold. Carries a UUID reservationId and the map of productId→quantity held. Passed between CheckoutService and InventoryService for commit/release operations.",
     tags: [["Record","blue"],["2-phase protocol","purple"]],
-    code: "record InventoryReservation(\n  String reservationId,  // UUID\n  Map<Long,Integer> quantities\n)" },
+    code: "record InventoryReservation(\n  String reservationId,  // UUID\n  Map&lt;Long,Integer&gt; quantities\n)" },
   { icon: "🔥", iconBg: "#1a0a00", title: "FaultMode", sub: "demo/FaultMode.java",
     desc: "Enum defining the four possible fault states for each stub service. NORMAL is the default. FLAKY alternates failures using AtomicInteger. SLOW respects the shared slowDelayMs setting.",
     tags: [["Enum","orange"],["Chaos","red"]],
@@ -1049,11 +1049,11 @@ const TOPICS = [
 /* ═══════════════════════════════════════════════════════════════════════════════
    TAB SWITCHING
    ═══════════════════════════════════════════════════════════════════════════════ */
-function showTab(name) {
+function showTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(name + '-panel').classList.add('active');
-  event.currentTarget.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -1111,11 +1111,11 @@ function initDiagram() {
   // Tier background labels
   const tierGroup = doc('g');
   const TIERS = [
-    { label:'CLIENT', x: 30, y: 30 },
-    { label:'CONTROLLERS', x: 230, y: 30 },
-    { label:'SERVICES', x: 490, y: 30 },
-    { label:'EXTERNAL STUBS', x: 740, y: 30 },
-    { label:'INFRASTRUCTURE', x: 490, y: 520 }
+    { label:'CLIENT', x: 22, y: 46 },
+    { label:'CONTROLLERS', x: 202, y: 46 },
+    { label:'SERVICES', x: 404, y: 46 },
+    { label:'EXTERNAL STUBS', x: 602, y: 46 },
+    { label:'INFRASTRUCTURE', x: 22, y: 634 }
   ];
   TIERS.forEach(t => {
     const txt = doc('text');
